@@ -42,10 +42,7 @@ unsigned long delaytime = 500;           // We always wait a bit between updates
 int rtc[7];                              // Holds real time clock output
 bool shut = false;                       // Stores matrix sleep state
 int light_count = 0;                     // Counter for light routine
-// The possible values for the below, these are set via the setup Font menu:
-// font_style = 3, font_offset = 1, font_cols = 6
-// font_style = 2, font_offset = 1, font_cols = 6
-// font_style = 1, font_offset = 0, font_cols = 5
+// These are set via the setup Font menu:
 byte font_style = 2;                     // Default clock large font style
 byte font_offset = 1;                    // Default clock large font offset adjustment
 byte font_cols = 6;                      // Default clock large font columns adjustment
@@ -295,14 +292,25 @@ void putnormalchar(byte x, byte y, char c, byte fs, byte fc)
     c &= 0x1F;   // a-z maps to 1-26
   }
   else if (c >= '0' && c <= '9') {
-    if (fs == 1) {
-      c = (c - '0') + 59;   // 0-9 maps to 59-68
-    }
-    else if (fs == 2) {
-      c = (c - '0') + 69;   // 0-9 maps to 69-78
-    }
-    else if (fs == 3) {
-      c = (c - '0') + 79;   // 0-9 maps to 79-88
+    switch(fs) {
+      case 1:
+        c = (c - '0') + 59;   // 0-9 maps to 59-68
+        break;
+      case 2:
+        c = (c - '0') + 69;   // 0-9 maps to 69-78
+        break;
+      case 3:
+        c = (c - '0') + 79;   // 0-9 maps to 79-88
+        break;
+      case 4:
+        c = (c - '0') + 89;   // 0-9 maps to 89-98
+        break;
+      case 5:
+        c = (c - '0') + 99;   // 0-9 maps to 99-108
+        break;
+      case 6:
+        c = (c - '0') + 69;   // 0-9 maps to 69-78
+        break;
     }
   }
   else if (c == ' ') {
@@ -1562,9 +1570,16 @@ void set_font() {
   
   delay(2000);
   cls();
+
+  byte set_font_value;
+  if (font_style == 2 && font_cols == 5) {
+    set_font_value = 6;
+  }
+  else {
+    set_font_value = font_style;
+  }
   
-  byte set_font_value = font_style;
-  set_font_value = get_font_value(set_font_value, 1, 3);
+  set_font_value = get_font_value(set_font_value, 1, 6);
 
   switch(set_font_value) {
     case 1:
@@ -1582,14 +1597,29 @@ void set_font() {
       font_offset = 1;
       font_cols = 6;
       break;
+    case 4:
+      font_style = 4;
+      font_offset = 1;
+      font_cols = 6;
+      break;
+    case 5:
+      font_style = 5;
+      font_offset = 0;
+      font_cols = 5;
+      break;
+    case 6:
+      font_style = 2;
+      font_offset = 0;
+      font_cols = 5;  //cheap way to create a new font (crop 1 column left side)
+      break;
   }
 }
 
-//get values for setting font
+//get user values for setting font
 int get_font_value(int current_value, int min_value, int max_value) {
   
   //print digits bottom line
-  char buffer[1] = " ";
+  char buffer[2] = " ";
   itoa(current_value, buffer ,10);
   puttinychar(0, 1, '>'); 
   puttinychar(4, 1, buffer[0]); 
@@ -1614,7 +1644,7 @@ int get_font_value(int current_value, int min_value, int max_value) {
 
     while (buttonC.isPressed()){
 
-      if(current_value > min_value) { 
+      if(current_value > min_value) {
         current_value--;
       } 
       else {
@@ -1622,25 +1652,25 @@ int get_font_value(int current_value, int min_value, int max_value) {
       }
       //print the new value
       itoa(current_value, buffer ,10);
-      puttinychar(0, 1, '>'); 
-      puttinychar(4, 1, buffer[0]); 
+      puttinychar(0, 1, '>');
+      puttinychar(4, 1, buffer[0]);
       delay(150);
     }
-    
+
   }
   return current_value;
 }
 
 
-//change screen intensityintensity
+//change screen intensity
 void set_intensity() {
 
   cls();
   
   byte i = 0;
-  char text[7] = "Bright";
+  char text[8] = ">Bright";
   while(text[i]) {
-    puttinychar((i * 4) + 4, 0, text[i]);
+    puttinychar((i * 4) + 3, 0, text[i]);
     i++;
   }
 
@@ -1664,7 +1694,7 @@ void set_intensity() {
       }
       
       //display the intensity level as a bar
-      levelbar (0,6,(intensity * 2) + 2, 2);    
+      levelbar (0, 6, (intensity * 2) + 2, 2);    
       
       //change the brightness setting on the displays
       for (byte address = 0; address < 4; address++) {
@@ -1706,7 +1736,7 @@ void set_intensity() {
 void levelbar (byte xpos, byte ypos, byte xbar, byte ybar) {
   for (byte x = 0; x < xbar; x++) {
     for (byte y = 0; y <= ybar; y++) {
-      plot(x+xpos, y+ypos, 1);
+      plot(x + xpos, y + ypos, 1);
     }
   }
 }
@@ -1747,13 +1777,13 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
 
   cls();
   char messages[6][17]   = {
-    "Set Mins", "Set Hour", "Set Day", "Set Mnth", "Set Year"};
+    ">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
 
   //Print "set xyz" top line
   byte i = 0;
   while(messages[message][i])
   {
-    puttinychar(i*4 , 1, messages[message][i]); 
+    puttinychar(i * 4, 1, messages[message][i]); 
     i++;
   }
 
@@ -1763,11 +1793,11 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
   //print digits bottom line
   char buffer[5] = "    ";
   itoa(current_value,buffer,10);
-  puttinychar(0 , 1, buffer[0]); 
-  puttinychar(4 , 1, buffer[1]); 
-  puttinychar(8 , 1, buffer[2]); 
-  puttinychar(12, 1, buffer[3]); 
-
+  puttinychar(0 , 1, '>');
+  puttinychar(4 , 1, buffer[0]);
+  puttinychar(8 , 1, buffer[1]);
+  puttinychar(12, 1, buffer[2]);
+  puttinychar(16, 1, buffer[3]);
   delay(300);
   //wait for button input
   while (!buttonA.uniquePress()) {
@@ -1782,10 +1812,11 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
       }
       //print the new value
       itoa(current_value, buffer ,10);
-      puttinychar(0 , 1, buffer[0]); 
-      puttinychar(4 , 1, buffer[1]); 
-      puttinychar(8 , 1, buffer[2]); 
-      puttinychar(12, 1, buffer[3]);    
+      puttinychar(0 , 1, '>');
+      puttinychar(4 , 1, buffer[0]);
+      puttinychar(8 , 1, buffer[1]);
+      puttinychar(12, 1, buffer[2]);
+      puttinychar(16, 1, buffer[3]);
       delay(150);
     }
 
@@ -1799,10 +1830,11 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
       }
       //print the new value
       itoa(current_value, buffer ,10);
-      puttinychar(0 , 1, buffer[0]); 
-      puttinychar(4 , 1, buffer[1]); 
-      puttinychar(8 , 1, buffer[2]); 
-      puttinychar(12, 1, buffer[3]);    
+      puttinychar(0 , 1, '>');
+      puttinychar(4 , 1, buffer[0]);
+      puttinychar(8 , 1, buffer[1]);
+      puttinychar(12, 1, buffer[2]);
+      puttinychar(16, 1, buffer[3]);
       delay(150);
     }
     
