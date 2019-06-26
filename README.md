@@ -11,3 +11,5 @@ Currently work in progress, adding addional fonts, changable via menu and adding
               # Fixed various font alignment and reassignment.
               # Menu now uses small font, with > at start.
               # Font can be changed via setup menu.
+              # Fixed Set Font menu anomalies.
+              # Temp/Humi/Pres is now available from all modes via ButtonB.
