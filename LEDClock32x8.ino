@@ -42,6 +42,10 @@ unsigned long delaytime = 500;           // We always wait a bit between updates
 int rtc[7];                              // Holds real time clock output
 bool shut = false;                       // Stores matrix sleep state
 int light_count = 0;                     // Counter for light routine
+// The possible values for the below, these are set via the setup Font menu:
+// font_style = 3, font_offset = 1, font_cols = 6
+// font_style = 2, font_offset = 1, font_cols = 6
+// font_style = 1, font_offset = 0, font_cols = 5
 byte font_style = 2;                     // Default clock large font style
 byte font_offset = 1;                    // Default clock large font offset adjustment
 byte font_cols = 6;                      // Default clock large font columns adjustment
@@ -57,18 +61,18 @@ char suffix[4][3] = {
 };  //date suffix array, used in slide, basic_mode and jumble modes. e,g, 1st 2nd ...
 
 //define constants
-#define NUM_DISPLAY_MODES 3                // Number display modes (conting zero as the first mode)
-#define NUM_SETTINGS_MODES 4               // Number settings modes = 6 (conting zero as the first mode)
-#define SLIDE_DELAY 20                     // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
-#define cls clear_display                  // Clear display
+#define NUM_DISPLAY_MODES  3                    // Number display modes (conting zero as the first mode)
+#define NUM_SETTINGS_MODES 5      //4           // Number settings modes = 6 (conting zero as the first mode)
+#define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
+#define cls                clear_display        // Clear display
 
-RTC_DS3231 ds3231;                         // Create RTC object
-Adafruit_BME280 bme;                       // BME280 object
-BH1750FVI lux(BH1750FVI::k_DevModeContHighRes);
+RTC_DS3231 ds3231;                              // Create RTC object
+Adafruit_BME280 bme;                            // BME280 object
+BH1750FVI lux(BH1750FVI::k_DevModeContHighRes); // BH1750 object
 
 Button buttonA = Button(2, BUTTON_PULLUP); // Mode button
 Button buttonB = Button(3, BUTTON_PULLUP); // Date / + button
-Button buttonC = Button(4, BUTTON_PULLUP); // - button
+Button buttonC = Button(4, BUTTON_PULLUP); // Temp/Humidity/Pressure / - button
 
 void setup() {
 
@@ -98,8 +102,8 @@ void setup() {
   Wire1.begin(); // Shield I2C pins connect to alt I2C bus on Arduino
 #endif
   ds3231.begin(); //start RTC Clock
-  ds3231.adjust(DateTime(2019, 6, 23, 22, 30, 00));  // Set time manually
-  //ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
+  //ds3231.adjust(DateTime(2019, 6, 23, 22, 30, 00));  // Set time manually
+  ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
   if (! ds3231.begin()) {
     Serial.println("Couldn't find RTC");
     while (1);
@@ -115,7 +119,7 @@ void setup() {
 
   lux.begin();
 
-  //Show software version & hello message
+  //Show software version & startup message
   printver();
   
 }
@@ -125,20 +129,20 @@ void loop() {
   //run the clock with whatever mode is set by clock_mode - the default is set at top of code.
   switch (clock_mode){
         
-  case 0: 
+  case 0:
     basic_mode();
-    break; 
-  case 1: 
-   small_mode(); 
     break;
-  case 2: 
-    slide(); 
+  case 1:
+   small_mode();
     break;
-  case 3: 
-    word_clock(); 
+  case 2:
+    slide();
     break;
-  case 4: 
-    setup_menu(); 
+  case 3:
+    word_clock();
+    break;
+  case 4:
+    setup_menu();
     break;
   }
 
@@ -291,13 +295,13 @@ void putnormalchar(byte x, byte y, char c, byte fs, byte fc)
     c &= 0x1F;   // a-z maps to 1-26
   }
   else if (c >= '0' && c <= '9') {
-    if (fs == 0) {
+    if (fs == 1) {
       c = (c - '0') + 59;   // 0-9 maps to 59-68
     }
-    else if (fs == 1) {
+    else if (fs == 2) {
       c = (c - '0') + 69;   // 0-9 maps to 69-78
     }
-    else if (fs == 2) {
+    else if (fs == 3) {
       c = (c - '0') + 79;   // 0-9 maps to 79-88
     }
   }
@@ -1196,7 +1200,7 @@ void display_thp()
     else {
       offset = 0;
     }
-    putnormalchar(i * 6 - offset, 0, pres[i], 0, 5);
+    putnormalchar(i * 6 - offset, 0, pres[i], 1, 5);
     i++;
   }
   byte x = 0;
@@ -1397,7 +1401,7 @@ void set_next_random() {
 void setup_menu() {
 
   const char* set_modes[] = {
-     ">Random", ">24 Hr", ">Set", ">Bright", ">Exit"}; 
+     ">Random", ">24 Hr", ">Font", ">Set", ">Bright", ">Exit"}; 
   if (ampm == 0) { 
     set_modes[1] = ("12 Hr"); 
   }
@@ -1449,21 +1453,24 @@ void setup_menu() {
       set_random(); 
       break;
     case 1: 
-       set_ampm(); 
+      set_ampm(); 
       break;
     case 2: 
+      set_font();
+      break;
+    case 3:
       set_time(); 
       break;
-    case 3: 
-       set_intensity(); 
+    case 4:
+      set_intensity(); 
       break;
-    case 4: 
+    case 5: 
       //exit menu
       break;
   }
     
   //change the clock from mode 6 (settings) back to the one it was in before 
-  clock_mode=old_mode;
+  clock_mode = old_mode;
 }
 
 
@@ -1513,6 +1520,97 @@ void set_ampm() {
 }
 
 
+//set font style
+void set_font() {
+
+  cls();
+
+  byte i = 0;
+  char text[10] = ">Set Font";
+  while(text[i]) {
+    puttinychar((i * 4) + 4, 0, text[i]);
+    i++;
+  }
+  
+  cls();
+  delay(2000);
+  
+  byte set_font_value = font_style;
+  set_font_value = get_font_value(set_font_value, 1, 3);
+
+  switch(set_font_value) {
+    case 1:
+      font_style = 1;
+      font_offset = 0;
+      font_cols = 5;
+      break;
+    case 2:
+      font_style = 2;
+      font_offset = 1;
+      font_cols = 6;
+      break;
+    case 3:
+      font_style = 3;
+      font_offset = 1;
+      font_cols = 6;
+      break;
+  }
+}
+
+//get values for setting font
+int get_font_value(int current_value, int min_value, int max_value) {
+  
+  //print digits bottom line
+  char buffer[5] = "    ";
+  itoa(current_value,buffer,10);
+  puttinychar(0 , 1, buffer[0]); 
+  puttinychar(4 , 1, buffer[1]); 
+  puttinychar(8 , 1, buffer[2]); 
+  puttinychar(12, 1, buffer[3]); 
+
+  delay(300);
+  //wait for button input
+  while (!buttonA.uniquePress()) {
+
+    while (buttonB.isPressed()){
+
+      if(current_value < max_value) { 
+        current_value++;
+      } 
+      else {
+        current_value = min_value;
+      }
+      //print the new value
+      itoa(current_value, buffer ,10);
+      puttinychar(0 , 1, buffer[0]); 
+      puttinychar(4 , 1, buffer[1]); 
+      puttinychar(8 , 1, buffer[2]); 
+      puttinychar(12, 1, buffer[3]);    
+      delay(150);
+    }
+
+    while (buttonC.isPressed()){
+
+      if(current_value > min_value) { 
+        current_value--;
+      } 
+      else {
+        current_value = max_value;
+      }
+      //print the new value
+      itoa(current_value, buffer ,10);
+      puttinychar(0 , 1, buffer[0]); 
+      puttinychar(4 , 1, buffer[1]); 
+      puttinychar(8 , 1, buffer[2]); 
+      puttinychar(12, 1, buffer[3]);    
+      delay(150);
+    }
+    
+  }
+  return current_value;
+}
+
+
 //change screen intensityintensity
 void set_intensity() {
 
@@ -1521,14 +1619,14 @@ void set_intensity() {
   byte i = 0;
   char text[7] = "Bright";
   while(text[i]) {
-    puttinychar((i*4)+4, 0, text[i]);
+    puttinychar((i * 4) + 4, 0, text[i]);
     i++;
   }
 
   //wait for button input
   while (!buttonA.uniquePress()) {
 
-    levelbar (0,6,(intensity*2)+2,2);    //display the intensity level as a bar
+    levelbar (0, 6,(intensity * 2) + 2, 2);    //display the intensity level as a bar
     while (buttonB.isPressed()) {
       if(intensity == 15) { 
         intensity = 0;
@@ -1540,12 +1638,12 @@ void set_intensity() {
       //print the new value 
       i = 0;
       while(text[i]) {
-        puttinychar((i*4)+4, 0, text[i]);
+        puttinychar((i * 4) + 4, 0, text[i]);
         i++;
       }
       
       //display the intensity level as a bar
-      levelbar (0,6,(intensity*2)+2,2);    
+      levelbar (0,6,(intensity * 2) + 2, 2);    
       
       //change the brightness setting on the displays
       for (byte address = 0; address < 4; address++) {
@@ -1563,12 +1661,12 @@ void set_intensity() {
       }
       //display the intensity level as a bar
       cls ();
-      levelbar (0,6,(intensity*2)+2,2);
+      levelbar (0, 6,(intensity * 2) + 2, 2);
       
       //print the new value 
       i = 0;
       while(text[i]) {
-        puttinychar((i*4)+4, 0, text[i]);
+        puttinychar((i * 4) + 4, 0, text[i]);
         i++;
       }
       
