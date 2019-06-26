@@ -9,6 +9,7 @@ Planned features/changes:
 
     # 4th Button for overriding/setting BH1750 light sensor display options.
     # Change word mode to have quarter past/to and mins to etc.
+    # Randomise font option
 
 26 Jun 2019 - # Changes:
 
@@ -20,3 +21,4 @@ Planned features/changes:
               # Font can be changed via setup menu.
               # Fixed Set Font menu anomalies.
               # Temp/Humi/Pres is now available from all modes via ButtonC.
+              # Added 6 fonts in total, one of them (no 6) is a cheap one; font 2 is cropped on right side to create the illusion of a new font.
