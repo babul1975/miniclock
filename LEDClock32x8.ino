@@ -380,6 +380,10 @@ void small_mode() {
       display_date();
       return;
     }
+    if (buttonC.uniquePress()) {
+      display_thp();
+      return;
+    }
     
     //if secs changed then update them on the display
     secs = rtc[0];
@@ -663,6 +667,10 @@ void slide() {
     }
       if (buttonB.uniquePress()) {
       display_date();
+      return;
+    }
+    if (buttonC.uniquePress()) {
+      display_thp();
       return;
     }
 
@@ -954,6 +962,10 @@ void word_clock() {
     if (buttonB.uniquePress()) {
       display_date();
     }
+    if (buttonC.uniquePress()) {
+      display_thp();
+      return;
+    }
 
     get_time(); //get the time from the clock chip
     mins = rtc[1];  //get mins
@@ -1054,6 +1066,10 @@ void word_clock() {
       if (buttonB.uniquePress()) {
         display_date();
       }
+      if (buttonC.uniquePress()) {
+        display_thp();
+        return;
+      }
     delay(1);
     counter--;    
     }
@@ -1082,6 +1098,10 @@ void word_clock() {
       if (buttonB.uniquePress()) {
         display_date();
       }
+      if (buttonC.uniquePress()) {
+        display_thp();
+        return;
+      }
       delay(1);
       counter--;
     }
@@ -1108,7 +1128,11 @@ void word_clock() {
       }
       if (buttonB.uniquePress()) {
         display_date();
-      }  
+      }
+      if (buttonC.uniquePress()) {
+        display_thp();
+        return;
+      }
       delay(1);
       counter--;
     }
@@ -1124,7 +1148,11 @@ void word_clock() {
       }
       if (buttonB.uniquePress()) {
         display_date();
-      }  
+      }
+      if (buttonC.uniquePress()) {
+        display_thp();
+        return;
+      }
       delay(1);
       counter--;
 
@@ -1526,14 +1554,14 @@ void set_font() {
   cls();
 
   byte i = 0;
-  char text[10] = ">Set Font";
+  char text[10] = ">Set Fnt";
   while(text[i]) {
-    puttinychar((i * 4) + 4, 0, text[i]);
+    puttinychar(i * 4, 0, text[i]);
     i++;
   }
   
-  cls();
   delay(2000);
+  cls();
   
   byte set_font_value = font_style;
   set_font_value = get_font_value(set_font_value, 1, 3);
@@ -1561,13 +1589,10 @@ void set_font() {
 int get_font_value(int current_value, int min_value, int max_value) {
   
   //print digits bottom line
-  char buffer[5] = "    ";
-  itoa(current_value,buffer,10);
-  puttinychar(0 , 1, buffer[0]); 
-  puttinychar(4 , 1, buffer[1]); 
-  puttinychar(8 , 1, buffer[2]); 
-  puttinychar(12, 1, buffer[3]); 
-
+  char buffer[1] = " ";
+  itoa(current_value, buffer ,10);
+  puttinychar(0, 1, '>'); 
+  puttinychar(4, 1, buffer[0]); 
   delay(300);
   //wait for button input
   while (!buttonA.uniquePress()) {
@@ -1582,10 +1607,8 @@ int get_font_value(int current_value, int min_value, int max_value) {
       }
       //print the new value
       itoa(current_value, buffer ,10);
-      puttinychar(0 , 1, buffer[0]); 
-      puttinychar(4 , 1, buffer[1]); 
-      puttinychar(8 , 1, buffer[2]); 
-      puttinychar(12, 1, buffer[3]);    
+      puttinychar(0, 1, '>'); 
+      puttinychar(4, 1, buffer[0]); 
       delay(150);
     }
 
@@ -1599,10 +1622,8 @@ int get_font_value(int current_value, int min_value, int max_value) {
       }
       //print the new value
       itoa(current_value, buffer ,10);
-      puttinychar(0 , 1, buffer[0]); 
-      puttinychar(4 , 1, buffer[1]); 
-      puttinychar(8 , 1, buffer[2]); 
-      puttinychar(12, 1, buffer[3]);    
+      puttinychar(0, 1, '>'); 
+      puttinychar(4, 1, buffer[0]); 
       delay(150);
     }
     
