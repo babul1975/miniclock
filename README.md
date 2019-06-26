@@ -6,6 +6,7 @@ Arduino based mini LED matrix clock, with BME280 Sensor and BH1750 Light Sensor.
 Currently work in progress, adding addional fonts, changable via menu and adding extra buttons.
 
 Planned features/changes:
+
     # 4th Button for overriding/setting BH1750 light sensor display options.
     # Change word mode to have quarter past/to and mins to etc.
 
