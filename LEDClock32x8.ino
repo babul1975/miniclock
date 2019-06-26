@@ -35,6 +35,7 @@ LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and 
 byte intensity = 2;                      // Default intensity/brightness (0-15)
 byte clock_mode = 0;                     // Default clock mode. Default = 0 (basic_mode)
 bool random_mode = 0;                    // Define random mode - changes the display type every few hours. Default = 0 (off)
+bool random_font_mode = 0;               // Define font random mode - changes the font every few hours.
 byte old_mode = clock_mode;              // Stores the previous clock mode, so if we go to date or whatever, we know what mode to go back to after.
 bool ampm = 0;                           // Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
 byte change_mode_time = 0;               // Holds hour when clock mode will next change if in random mode.
@@ -59,7 +60,8 @@ char suffix[4][3] = {
 
 //define constants
 #define NUM_DISPLAY_MODES  3                    // Number display modes (conting zero as the first mode)
-#define NUM_SETTINGS_MODES 5      //4           // Number settings modes = 6 (conting zero as the first mode)
+#define NUM_SETTINGS_MODES 6                    // Number settings modes = 6 (counting zero as the first mode)
+#define NUM_FONTS          6
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
 #define cls                clear_display        // Clear display
 
@@ -92,18 +94,15 @@ void setup() {
     lc.clearDisplay(address);
   }
 
-  //Setup DS3231 RTC
-#ifdef AVR
+  //I2C
   Wire.begin();
-#else
-  Wire1.begin(); // Shield I2C pins connect to alt I2C bus on Arduino
-#endif
+  //Setup DS3231 RTC
   ds3231.begin(); //start RTC Clock
   //ds3231.adjust(DateTime(2019, 6, 23, 22, 30, 00));  // Set time manually
   ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
-  if (! ds3231.begin()) {
+  if (!ds3231.begin()) {
     Serial.println("Couldn't find RTC");
-    while (1);
+    while(1);
   }
 
   bme.begin(0x76); // This sensor from Ebay has this address
@@ -115,6 +114,9 @@ void setup() {
     Adafruit_BME280::FILTER_OFF);
 
   lux.begin();
+
+  //what is this silliness, needed for random() to work properly
+  randomSeed(analogRead(A0));
 
   //Show software version & startup message
   printver();
@@ -264,8 +266,8 @@ void puttinychar(byte x, byte y, char c)
   else if (c == '>') {
     c = 30; // >
   }
-  else if (c == '?') {
-    c = 31; // single quote mark
+  else if (c == '/') {
+    c = 31; // forward slash
   }
 
   for (byte col = 0; col < 3; col++) {
@@ -1402,7 +1404,7 @@ void switch_mode() {
 byte run_mode() {
 
   //if random mode is on... check the hour when we change mode.
-  if (random_mode) {
+  if (random_mode || random_font_mode) {
     //if hour value in change mode time = hours. then reurn false = i.e. exit mode.
     if (change_mode_time == rtc[2]) {
       //set the next random clock mode and time to change it
@@ -1421,25 +1423,33 @@ void set_next_random() {
 
   //set the next hour the clock mode will change - current time plus 1 - 4 hours
   get_time();
-  change_mode_time = rtc[2] + random (1, 5);
+  change_mode_time = rtc[2] + random(1, 5);
 
   //if change_mode_time now happens to be over 23, then set it to between 1 and 3am
   if (change_mode_time > 23) {
-    change_mode_time = random (1, 4);
+    change_mode_time = random(1, 4);
   }
- 
-  //set the new clock mode
-  clock_mode = random(0, NUM_DISPLAY_MODES + 1);  //pick new random clock mode
+
+  if (random_mode) {
+    //set the new clock mode
+    clock_mode = random(0, NUM_DISPLAY_MODES + 1);  //pick new random clock mode
+  }
+  if (random_font_mode) {
+    //set new random font
+    set_font_case(random(1, NUM_FONTS + 1));
+  }
+
 }
+
 
 
 //dislpay menu to change the clock settings
 void setup_menu() {
 
   const char* set_modes[] = {
-     ">Random", ">24 Hr", ">Font", ">Set", ">Bright", ">Exit"}; 
+    ">Rnd Clk", ">Rnd Fnt", ">24 Hr", ">Font", ">D/Time", ">Bright", ">Exit"}; 
   if (ampm == 0) { 
-    set_modes[1] = ("12 Hr"); 
+    set_modes[2] = (">12 Hr"); 
   }
 
   byte setting_mode = 0;
@@ -1462,7 +1472,7 @@ void setup_menu() {
         setting_mode = 0; 
       }
 
-      //print arrown and current clock_mode name on line one and print next clock_mode name on line two
+      //print arrow and current clock_mode name on line one and print next clock_mode name on line two
       char str_top[9];
     
       strcpy (str_top, set_modes[setting_mode]);
@@ -1489,18 +1499,21 @@ void setup_menu() {
       set_random(); 
       break;
     case 1: 
-      set_ampm(); 
+      set_random_font(); 
       break;
     case 2: 
+      set_ampm(); 
+      break;
+    case 3: 
       set_font();
       break;
-    case 3:
+    case 4:
       set_time(); 
       break;
-    case 4:
+    case 5:
       set_intensity(); 
       break;
-    case 5: 
+    case 6: 
       //exit menu
       break;
   }
@@ -1511,7 +1524,8 @@ void setup_menu() {
 
 
 //toggle random mode - pick a different clock mode every few hours
-void set_random(){
+void set_random() {
+  
   cls();
 
   char text_a[9] = "Off";
@@ -1543,8 +1557,45 @@ void set_random(){
     }  
   } 
   delay(1500); //leave the message up for a second or so
+  
 }
 
+
+//toggle random font
+void set_random_font() {
+  
+  cls();
+  
+  char text_a[9] = "Off";
+  char text_b[9] = "On";
+  byte i = 0;
+  //if random font mode is on, turn it off
+  if (random_font_mode) {
+
+    //turn random font mode off
+    random_font_mode = 0;
+
+    //print a message on the display
+    while(text_a[i]) {
+      putnormalchar((i * 6), 0, text_a[i], font_style, font_cols);
+      i++;
+    }
+  } else {
+    //turn random font mode on. 
+    random_font_mode = 1;
+    
+    //set hour mode will change
+    set_next_random();
+  
+    //print a message on the display
+    while(text_b[i]) {
+      putnormalchar((i * 6), 0, text_b[i], font_style, font_cols);
+      i++;
+    }  
+  } 
+  delay(1500); //leave the message up for a second or so
+  
+}
 
 
 //set 12 or 24 hour clock
@@ -1579,9 +1630,18 @@ void set_font() {
     set_font_value = font_style;
   }
   
-  set_font_value = get_font_value(set_font_value, 1, 6);
+  set_font_value = get_font_value(set_font_value, 1, NUM_FONTS);
 
-  switch(set_font_value) {
+  //set the font
+  set_font_case(set_font_value);
+
+}
+
+
+//set font_style, font_offset & font_cols
+int set_font_case(int value) {
+  
+  switch(value) {
     case 1:
       font_style = 1;
       font_offset = 0;
@@ -1613,6 +1673,7 @@ void set_font() {
       font_cols = 5;  //cheap way to create a new font (crop 1 column left side)
       break;
   }
+  return value;
 }
 
 //get user values for setting font
@@ -1870,24 +1931,28 @@ void get_time()
 //Routine to check light level and turn on/off matrix
 void light()
 {
+  
   //Get light reading
   uint16_t lx = lux.GetLightIntensity();
-  if (lx == 0 && shut == false) {
+  if (lx == 0 && !shut) {
     shut = true;
     sleep(); //Call sleep routine to turn on/off matrix
   }
-  else if (lx > 0 && shut == true) {
+  else if (lx > 0 && shut) {
     shut = false;
     sleep(); //Call sleep routine to turn on/off matrix
   }
+
 }
 
 
 //Routine called by light() to turn on/off matrix
 void sleep()
 {
+
   int devices = lc.getDeviceCount();
   for (int address = 0; address < devices; address++) {
     lc.shutdown(address, shut);
   }
+
 }
