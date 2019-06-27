@@ -43,7 +43,8 @@ unsigned long delaytime = 500;           // We always wait a bit between updates
 int rtc[7];                              // Holds real time clock output
 bool shut = false;                       // Stores matrix sleep state
 int light_count = 0;                     // Counter for light routine
-// These are set via the setup Font menu:
+byte display_mode = 0;                   // Default display on/off mode, used by light sensor. 0 = normal, 2 = always on, 3 - always off
+// These are set via the setup Font menu, see set_font_case() routine for all default values:
 byte font_style = 2;                     // Default clock large font style
 byte font_offset = 1;                    // Default clock large font offset adjustment
 byte font_cols = 6;                      // Default clock large font columns adjustment
@@ -61,23 +62,25 @@ char suffix[4][3] = {
 //define constants
 #define NUM_DISPLAY_MODES  3                    // Number display modes (conting zero as the first mode)
 #define NUM_SETTINGS_MODES 6                    // Number settings modes = 6 (counting zero as the first mode)
-#define NUM_FONTS          6
+#define NUM_FONTS          6                    // Number of fonts, as defined in FontLEDClock.h
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
 #define cls                clear_display        // Clear display
 
 RTC_DS3231 ds3231;                              // Create RTC object
-Adafruit_BME280 bme;                            // BME280 object
-BH1750FVI lux(BH1750FVI::k_DevModeContHighRes); // BH1750 object
+Adafruit_BME280 bme;                            // BME280 object (pins 4 and 5 and 3.3v)
+BH1750FVI lux(BH1750FVI::k_DevModeContHighRes); // BH1750 object (pins 4 and 5 and 3.3v)
 
-Button buttonA = Button(2, BUTTON_PULLUP); // Mode button
-Button buttonB = Button(3, BUTTON_PULLUP); // Date / + button
-Button buttonC = Button(4, BUTTON_PULLUP); // Temp/Humidity/Pressure / - button
+Button buttonA = Button(2, BUTTON_PULLUP);      // Menu button
+Button buttonB = Button(3, BUTTON_PULLUP);      // Display date / + button
+Button buttonC = Button(4, BUTTON_PULLUP);      // Temp/Humidity/Pressure / - button
+Button buttonD = Button(5, BUTTON_PULLUP);      // Display options button
 
 void setup() {
 
-  digitalWrite(2, HIGH);                   // turn on pullup resistor for button on pin 2
-  digitalWrite(3, HIGH);                   // turn on pullup resistor for button on pin 3
-  digitalWrite(4, HIGH);                   // turn on pullup resistor for button on pin 4
+  digitalWrite(2, HIGH);                        // turn on pullup resistor for button on pin 2
+  digitalWrite(3, HIGH);                        // turn on pullup resistor for button on pin 3
+  digitalWrite(4, HIGH);                        // turn on pullup resistor for button on pin 4
+  digitalWrite(5, HIGH);                        // turn on pullup resistor for button on pin 5
   
   Serial.begin(9600); //start serial
 
@@ -96,8 +99,9 @@ void setup() {
 
   //I2C
   Wire.begin();
+  
   //Setup DS3231 RTC
-  ds3231.begin(); //start RTC Clock
+  ds3231.begin();
   //ds3231.adjust(DateTime(2019, 6, 23, 22, 30, 00));  // Set time manually
   ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
   if (!ds3231.begin()) {
@@ -105,14 +109,16 @@ void setup() {
     while(1);
   }
 
-  bme.begin(0x76); // This sensor from Ebay has this address
-  // Reduce BME sampling rate to prevent overheating
+  //BME280 environmental sensor, this sensor from Ebay has address 0x76
+  bme.begin(0x76);
+  //Reduce BME sampling rate to prevent overheating
   bme.setSampling(Adafruit_BME280::MODE_FORCED,
     Adafruit_BME280::SAMPLING_X1, // temperature
     Adafruit_BME280::SAMPLING_X1, // pressure
     Adafruit_BME280::SAMPLING_X1, // humidity
     Adafruit_BME280::FILTER_OFF);
 
+  //BH1750 light sensor
   lux.begin();
 
   //what is this silliness, needed for random() to work properly
@@ -126,7 +132,7 @@ void setup() {
 void loop() {
 
   //run the clock with whatever mode is set by clock_mode - the default is set at top of code.
-  switch (clock_mode){
+  switch(clock_mode) {
         
   case 0:
     basic_mode();
@@ -154,18 +160,18 @@ void plot (byte x, byte y, byte val) {
   //select which matrix depending on the x coord
   byte address;
   if (x >= 0 && x <= 7)   {
-    address = 0;
+    address = 3;
   }
   if (x >= 8 && x <= 15)  {
-    address = 1;
+    address = 2;
     x = x - 8;
   }
   if (x >= 16 && x <= 23) {
-    address = 2;
+    address = 1;
     x = x - 16;
   }
   if (x >= 24 && x <= 31) {
-    address = 3;
+    address = 0;
     x = x - 24;
   }
 
@@ -526,7 +532,7 @@ void basic_mode()
   //run clock main loop as long as run_mode returns true
   while (run_mode()) {
 
-    //Check light levels for turning on/offf matrix
+    //Check light levels for turning on/off matrix
     if (light_count > 4000) {
       light();
       light_count = 0;
@@ -547,6 +553,10 @@ void basic_mode()
     }
     if (buttonC.uniquePress()) {
       display_thp();
+      return;
+    }
+    if (buttonD.uniquePress()) {
+      display_options();
       return;
     }
 
@@ -681,6 +691,10 @@ void slide() {
     }
     if (buttonC.uniquePress()) {
       display_thp();
+      return;
+    }
+    if (buttonD.uniquePress()) {
+      display_options();
       return;
     }
 
@@ -976,6 +990,10 @@ void word_clock() {
       display_thp();
       return;
     }
+    if (buttonD.uniquePress()) {
+      display_options();
+      return;
+    }
 
     get_time(); //get the time from the clock chip
     mins = rtc[1];  //get mins
@@ -1080,6 +1098,10 @@ void word_clock() {
         display_thp();
         return;
       }
+      if (buttonD.uniquePress()) {
+        display_options();
+        return;
+      }
     delay(1);
     counter--;    
     }
@@ -1110,6 +1132,10 @@ void word_clock() {
       }
       if (buttonC.uniquePress()) {
         display_thp();
+        return;
+      }
+      if (buttonD.uniquePress()) {
+        display_options();
         return;
       }
       delay(1);
@@ -1143,6 +1169,10 @@ void word_clock() {
         display_thp();
         return;
       }
+      if (buttonD.uniquePress()) {
+        display_options();
+        return;
+      }
       delay(1);
       counter--;
     }
@@ -1161,6 +1191,10 @@ void word_clock() {
       }
       if (buttonC.uniquePress()) {
         display_thp();
+        return;
+      }
+      if (buttonD.uniquePress()) {
+        display_options();
         return;
       }
       delay(1);
@@ -1322,8 +1356,8 @@ void display_date()
   }
 
   //print the 2 suffix characters
-  puttinychar(suffixposx+offset, 1, suffix[s][0]); 
-  puttinychar(suffixposx+4+offset, 1, suffix[s][1]); 
+  puttinychar(suffixposx + offset, 1, suffix[s][0]); 
+  puttinychar(suffixposx + 4 + offset, 1, suffix[s][1]); 
  
   delay(1000);
   fade_down();
@@ -1335,11 +1369,11 @@ void display_date()
   while(monthnames[month][len]) { 
     len++; 
   }; 
-  offset = (31 - ((len-1)*4)) / 2; //our offset to centre up the text
+  offset = (31 - ((len - 1) * 4)) / 2; //our offset to centre up the text
   i = 0;
   while(monthnames[month][i])
   {  
-    puttinychar((i*4) +offset, 1, monthnames[month][i]); 
+    puttinychar((i * 4) + offset, 1, monthnames[month][i]); 
     i++; 
   }
   
@@ -1373,18 +1407,17 @@ void switch_mode() {
       if (firstrun == 0) {
         clock_mode++;
       }
-      if (clock_mode > NUM_DISPLAY_MODES + 1 ) {
+      if (clock_mode > NUM_DISPLAY_MODES + 1) {
         clock_mode = 0;
       }
 
       //print arrown and current clock_mode name on line one and print next clock_mode name on line two
       char str_top[9];
 
-      //strcpy (str_top, "-");
       strcpy (str_top, modes[clock_mode]);
 
       next_clock_mode = clock_mode + 1;
-      if (next_clock_mode >  NUM_DISPLAY_MODES + 1 ) {
+      if (next_clock_mode >  NUM_DISPLAY_MODES + 1) {
         next_clock_mode = 0;
       }
 
@@ -1418,7 +1451,7 @@ byte run_mode() {
 }
 
 
-//set the next hour the clock will change mode when random mode is on
+//set the next hour the clock will change mode when random mode is on, also does the random font mode
 void set_next_random() {
 
   //set the next hour the clock mode will change - current time plus 1 - 4 hours
@@ -1436,7 +1469,7 @@ void set_next_random() {
   }
   if (random_font_mode) {
     //set new random font
-    set_font_case(random(1, NUM_FONTS + 1));
+    set_font_case(random(1, NUM_FONTS + 1));  //pick new random font mode
   }
 
 }
@@ -1528,8 +1561,8 @@ void set_random() {
   
   cls();
 
-  char text_a[9] = "Off";
-  char text_b[9] = "On";
+  char text_a[4] = "Off";
+  char text_b[3] = "On";
   byte i = 0;
 
   //if random mode is on, turn it off
@@ -1540,7 +1573,7 @@ void set_random() {
 
     //print a message on the display
     while(text_a[i]) {
-      putnormalchar((i*6), 0, text_a[i], font_style, font_cols);
+      puttinychar(i * 4, 1, text_a[i]);
       i++;
     }
   } else {
@@ -1552,7 +1585,7 @@ void set_random() {
   
     //print a message on the display
     while(text_b[i]) {
-      putnormalchar((i*6), 0, text_b[i], font_style, font_cols);
+      puttinychar(i * 4, 1, text_b[i]);
       i++;
     }  
   } 
@@ -1566,8 +1599,8 @@ void set_random_font() {
   
   cls();
   
-  char text_a[9] = "Off";
-  char text_b[9] = "On";
+  char text_a[4] = "Off";
+  char text_b[3] = "On";
   byte i = 0;
   //if random font mode is on, turn it off
   if (random_font_mode) {
@@ -1577,7 +1610,7 @@ void set_random_font() {
 
     //print a message on the display
     while(text_a[i]) {
-      putnormalchar((i * 6), 0, text_a[i], font_style, font_cols);
+      puttinychar(i * 4, 0, text_a[i]);
       i++;
     }
   } else {
@@ -1589,11 +1622,11 @@ void set_random_font() {
   
     //print a message on the display
     while(text_b[i]) {
-      putnormalchar((i * 6), 0, text_b[i], font_style, font_cols);
+      puttinychar(i * 4, 0, text_b[i]);
       i++;
     }  
   } 
-  delay(1500); //leave the message up for a second or so
+  delay(1500);
   
 }
 
@@ -1615,7 +1648,7 @@ void set_font() {
   byte i = 0;
   char text[10] = ">Set Fnt";
   while(text[i]) {
-    puttinychar(i * 4, 0, text[i]);
+    puttinychar(i * 4, 1, text[i]);
     i++;
   }
   
@@ -1638,7 +1671,7 @@ void set_font() {
 }
 
 
-//set font_style, font_offset & font_cols
+//set font_style, font_offset & font_cols, used by set_font()
 int set_font_case(int value) {
   
   switch(value) {
@@ -1934,13 +1967,17 @@ void light()
   
   //Get light reading
   uint16_t lx = lux.GetLightIntensity();
-  if (lx == 0 && !shut) {
+  if (display_mode == 2) {
     shut = true;
-    sleep(); //Call sleep routine to turn on/off matrix
+    sleep(); //Call sleep routine to turn off matrix, applies only when 4th button is used to turn it always off
   }
-  else if (lx > 0 && shut) {
+  else if (lx == 0 && !shut && display_mode == 0) {
+    shut = true;
+    sleep(); //Call sleep routine to turn off matrix, applies when light is low enough and 4th button option is normal
+  }
+  else if (lx > 0 && shut && display_mode != 2) {
     shut = false;
-    sleep(); //Call sleep routine to turn on/off matrix
+    sleep(); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
   }
 
 }
@@ -1954,5 +1991,30 @@ void sleep()
   for (int address = 0; address < devices; address++) {
     lc.shutdown(address, shut);
   }
+
+}
+
+
+//Routine to set display on/off options
+void display_options() {
+
+  cls();
+
+  char options[3][9] = {
+    "Disp Nrm", "Disp On", "Disp Off"
+  };
+
+  display_mode++;
+  if (display_mode == 3) {
+    display_mode = 0;
+  }
+
+  byte i = 0;
+  while(options[display_mode][i])
+  {
+    puttinychar(i * 4, 1, options[display_mode][i]); 
+    i++;
+  }
+  delay(1000);
 
 }
