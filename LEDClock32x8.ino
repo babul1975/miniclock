@@ -62,7 +62,7 @@ char suffix[4][3] = {
 //define constants
 #define NUM_DISPLAY_MODES  3                    // Number display modes (conting zero as the first mode)
 #define NUM_SETTINGS_MODES 6                    // Number settings modes = 6 (counting zero as the first mode)
-#define NUM_FONTS          6                    // Number of fonts, as defined in FontLEDClock.h
+#define NUM_FONTS          7                    // Number of fonts, as defined in FontLEDClock.h
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
 #define cls                clear_display        // Clear display
 
@@ -318,6 +318,9 @@ void putnormalchar(byte x, byte y, char c, byte fs, byte fc)
         break;
       case 6:
         c = (c - '0') + 69;   // 0-9 maps to 69-78
+        break;
+      case 7:
+        c = (c - '0') + 109;   // 0-9 maps to 109-108
         break;
     }
   }
@@ -1705,6 +1708,11 @@ int set_font_case(int value) {
       font_offset = 0;
       font_cols = 5;  //cheap way to create a new font (crop 1 column left side)
       break;
+    case 7:
+      font_style = 7;
+      font_offset = 1;
+      font_cols = 6;
+      break;
   }
   return value;
 }
@@ -1978,6 +1986,20 @@ void light()
   else if (lx > 0 && shut && display_mode != 2) {
     shut = false;
     sleep(); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
+  }
+  Serial.println(lx);
+
+  if (lx > 59) {
+    int devices = lc.getDeviceCount();
+    for (int address = 0; address < devices; address++) {
+      lc.setIntensity(address, 15);
+    }
+  }
+  else if (lx < 60) {
+    int devices = lc.getDeviceCount();
+    for (int address = 0; address < devices; address++) {
+      lc.setIntensity(address, 0);
+    }
   }
 
 }
