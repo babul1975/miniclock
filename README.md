@@ -14,6 +14,8 @@ Planned features/changes:
 27 Jun 2019 - Changes:
 
               # Added 4th button for setting display on/off options
+              # Added font_style 7
+              # Work in progress: light sensor automatically adjusts intensity
 
 26 Jun 2019 - Changes:
 
