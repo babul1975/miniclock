@@ -9,13 +9,13 @@ Planned features/changes:
 
     # 4th Button - need to add option for keeping display on till a certain time.
     # Change word mode to have quarter past/to and mins to etc.
-    # Light Sensor - option to adjust intensity automatically
 
 27 Jun 2019 - Changes:
 
               # Added 4th button for setting display on/off options
               # Added font_style 7
               # Work in progress: light sensor automatically adjusts intensity
+              # Automatic LED Intensity adjustment, can be turned off via setup menu
 
 26 Jun 2019 - Changes:
 
