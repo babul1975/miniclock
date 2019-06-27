@@ -44,6 +44,7 @@ int rtc[7];                              // Holds real time clock output
 bool shut = false;                       // Stores matrix sleep state
 int light_count = 0;                     // Counter for light routine
 byte display_mode = 0;                   // Default display on/off mode, used by light sensor. 0 = normal, 2 = always on, 3 - always off
+bool auto_intensity = true;              // Default auto light intensity setting
 // These are set via the setup Font menu, see set_font_case() routine for all default values:
 byte font_style = 2;                     // Default clock large font style
 byte font_offset = 1;                    // Default clock large font offset adjustment
@@ -61,7 +62,7 @@ char suffix[4][3] = {
 
 //define constants
 #define NUM_DISPLAY_MODES  3                    // Number display modes (conting zero as the first mode)
-#define NUM_SETTINGS_MODES 6                    // Number settings modes = 6 (counting zero as the first mode)
+#define NUM_SETTINGS_MODES 7                    // Number settings modes = 7 (counting zero as the first mode)
 #define NUM_FONTS          7                    // Number of fonts, as defined in FontLEDClock.h
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
 #define cls                clear_display        // Clear display
@@ -1483,7 +1484,7 @@ void set_next_random() {
 void setup_menu() {
 
   const char* set_modes[] = {
-    ">Rnd Clk", ">Rnd Fnt", ">24 Hr", ">Font", ">D/Time", ">Bright", ">Exit"}; 
+    ">Rnd Clk", ">Rnd Fnt", ">24 Hr", ">Font", ">D/Time", ">Auto LX", ">Bright", ">Exit"}; 
   if (ampm == 0) { 
     set_modes[2] = (">12 Hr"); 
   }
@@ -1547,9 +1548,12 @@ void setup_menu() {
       set_time(); 
       break;
     case 5:
+      set_auto_intensity(); 
+      break;
+    case 6:
       set_intensity(); 
       break;
-    case 6: 
+    case 7: 
       //exit menu
       break;
   }
@@ -1613,7 +1617,7 @@ void set_random_font() {
 
     //print a message on the display
     while(text_a[i]) {
-      puttinychar(i * 4, 0, text_a[i]);
+      puttinychar(i * 4, 1, text_a[i]);
       i++;
     }
   } else {
@@ -1625,7 +1629,7 @@ void set_random_font() {
   
     //print a message on the display
     while(text_b[i]) {
-      puttinychar(i * 4, 0, text_b[i]);
+      puttinychar(i * 4, 1, text_b[i]);
       i++;
     }  
   } 
@@ -1674,7 +1678,7 @@ void set_font() {
 }
 
 
-//set font_style, font_offset & font_cols, used by set_font()
+//set font_style, font_offset & font_cols variables, used by set_font()
 int set_font_case(int value) {
   
   switch(value) {
@@ -1834,6 +1838,41 @@ void set_intensity() {
 }
 
 
+void set_auto_intensity() {
+
+  cls();
+  
+  char text_a[4] = "Off";
+  char text_b[3] = "On";
+  byte i = 0;
+  //if auto intensity is on, turn it off
+  if (auto_intensity) {
+
+    //turn auto intensity off
+    random_font_mode = false;
+    //revert to default intensity level
+    set_devices(true, intensity);
+
+    //print a message on the display
+    while(text_a[i]) {
+      puttinychar(i * 4, 1, text_a[i]);
+      i++;
+    }
+  } else {
+    //turn auto intensity on. 
+    auto_intensity = true;
+  
+    //print a message on the display
+    while(text_b[i]) {
+      puttinychar(i * 4, 1, text_b[i]);
+      i++;
+    }  
+  } 
+  delay(1500);
+
+}
+
+
 // display a horizontal bar on the screen at offset xposr by ypos with height and width of xbar, ybar
 void levelbar (byte xpos, byte ypos, byte xbar, byte ybar) {
   for (byte x = 0; x < xbar; x++) {
@@ -1977,41 +2016,88 @@ void light()
   uint16_t lx = lux.GetLightIntensity();
   if (display_mode == 2) {
     shut = true;
-    sleep(); //Call sleep routine to turn off matrix, applies only when 4th button is used to turn it always off
+    set_devices(false, 0); //Call sleep routine to turn off matrix, applies only when 4th button is used to turn it always off
   }
   else if (lx == 0 && !shut && display_mode == 0) {
     shut = true;
-    sleep(); //Call sleep routine to turn off matrix, applies when light is low enough and 4th button option is normal
+    set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough and 4th button option is normal
   }
   else if (lx > 0 && shut && display_mode != 2) {
     shut = false;
-    sleep(); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
+    set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
   }
   Serial.println(lx);
 
-  if (lx > 59) {
-    int devices = lc.getDeviceCount();
-    for (int address = 0; address < devices; address++) {
-      lc.setIntensity(address, 15);
+  if (auto_intensity && !shut) {
+    byte i = 0;
+    switch(lx) {
+      case 0:
+      i = 0;
+      break;
+      case 1 ... 5:
+      i = 1;
+      break;
+      case 6 ... 10:
+      i = 2;
+      break;
+      case 11 ... 15:
+      i = 3;
+      break;
+      case 16 ... 20:
+      i = 4;
+      break;
+      case 21 ... 25:
+      i = 5;
+      break;
+      case 26 ... 30:
+      i = 6;
+      break;
+      case 31 ... 35:
+      i = 7;
+      break;
+      case 36 ... 40:
+      i = 8;
+      break;
+      case 41 ... 45:
+      i = 9;
+      break;
+      case 46 ... 50:
+      i = 10;
+      break;
+      case 51 ... 55:
+      i = 11;
+      break;
+      case 56 ... 60:
+      i = 12;
+      break;
+      case 61 ... 65:
+      i = 13;
+      break;
+      case 66 ... 70:
+      i = 14;
+      break;
+      case 71 ... 10000:
+      i = 15;
+      break;
     }
-  }
-  else if (lx < 60) {
-    int devices = lc.getDeviceCount();
-    for (int address = 0; address < devices; address++) {
-      lc.setIntensity(address, 0);
-    }
+    set_devices(true, i);
   }
 
 }
 
 
-//Routine called by light() to turn on/off matrix
-void sleep()
+//Routine called by light() to turn on/off matrix and by auto light intensity to adjust device intensity
+void set_devices(bool m, byte i)
 {
 
   int devices = lc.getDeviceCount();
   for (int address = 0; address < devices; address++) {
-    lc.shutdown(address, shut);
+    if (!m) {
+      lc.shutdown(address, shut);
+    }
+    else {
+      lc.setIntensity(address, i);
+    }
   }
 
 }
