@@ -10,9 +10,12 @@ Tested on IDE v1.6.5
 
 =======================================================================
 
-Modified by Ratti3 - 26 Jun 2019
+Modified by Ratti3 - 27 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
+
+https://github.com/Ratti3/miniclock
+https://youtu.be/CpQsMjI3FL0
 
 ***********************************************************************/
 
