@@ -14,12 +14,16 @@ Modified by Ratti3 - 27 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
+24,546 bytes 79%
+1,238 bytes 60%
+
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
 
 ***********************************************************************/
 
 //include libraries:
+#include "ProgmemData.h"                 // Progmem Storage File, holds day and month names, frees up precious RAM
 #include <LedControl.h>                  // v1.0.6 https://github.com/wayoda/LedControl
 #include <FontLEDClock.h>                // https://github.com/javastraat/arduino/blob/master/libraries/FontLEDClock/FontLEDClock.h - however, it has been modified
 #include <Wire.h>                        // Standard Arduino library
@@ -48,17 +52,14 @@ bool shut = false;                       // Stores matrix sleep state
 int light_count = 0;                     // Counter for light routine
 byte display_mode = 0;                   // Default display on/off mode, used by light sensor. 0 = normal, 2 = always on, 3 - always off
 bool auto_intensity = true;              // Default auto light intensity setting
+byte hour_off_1 = 21;                    // These three define the hour light sensor can turn off display if dark enough, format is 24 hours, the routine for
+byte hour_off_2 = 22;                    // this checks between 13.00 and one of these values
+byte hour_off_3 = 23;
 // These are set via the setup Font menu, see set_font_case() routine for all default values:
 byte font_style = 2;                     // Default clock large font style
 byte font_offset = 1;                    // Default clock large font offset adjustment
 byte font_cols = 6;                      // Default clock large font columns adjustment
 
-char days[7][4] = {
-  "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-}; //day array - used in slide, basic_mode and jumble modes (The DS3231 outputs 1-7 values for day of week)
-char daysfull[7][9] = {
-  "Sunday", "Monday", "Tuesday", "Wed", "Thursday", "Friday", "Saturday"
-};
 char suffix[4][3] = {
   "st", "nd", "rd", "th"
 };  //date suffix array, used in slide, basic_mode and jumble modes. e,g, 1st 2nd ...
@@ -1306,25 +1307,22 @@ void display_date()
   byte date = rtc[4];
   byte month = rtc[5] - 1;
 
-  //array of month names to print on the display. Some are shortened as we only have 8 characters across to play with
-  char monthnames[12][9] = {
-    "January", "February", "March", "April", "May", "June", "July", "August", "Sept", "October", "November", "December"
-  };
-
   //print the day name
   
   //get length of text in pixels, that way we can centre it on the display by divindin the remaining pixels b2 and using that as an offset
   byte len = 0;
-  while(daysfull[dow][len]) { 
+  char dayfullname[9];
+  strcpy_P(dayfullname, (char *)pgm_read_word(&(daysfull[dow])));
+  while(dayfullname[len]) { 
     len++; 
   }; 
-  byte offset = (31 - ((len-1)*4)) / 2; //our offset to centre up the text
+  byte offset = (31 - ((len - 1) * 4)) / 2; //our offset to centre up the text
       
   //print the name     
   int i = 0;
-  while(daysfull[dow][i])
+  while(dayfullname[i])
   {
-    puttinychar((i*4) + offset , 1, daysfull[dow][i]); 
+    puttinychar((i * 4) + offset , 1, dayfullname[i]);
     i++;
   }
   delay(1000);
@@ -1333,7 +1331,7 @@ void display_date()
   
   // print date numerals
   char buffer[3];
-  itoa(date,buffer,10);
+  itoa(date, buffer, 10);
   offset = 10; //offset to centre text if 3 chars - e.g. 3rd
   
   // first work out date 2 letter suffix - eg st, nd, rd, th etc
@@ -1350,7 +1348,7 @@ void display_date()
   } 
 
   //print the 1st date number
-  puttinychar(0+offset, 1, buffer[0]);
+  puttinychar(0 + offset, 1, buffer[0]);
 
   //if date is under 10 - then we only have 1 digit so set positions of sufix etc one character nearer
   byte suffixposx = 4;
@@ -1358,7 +1356,7 @@ void display_date()
   //if date over 9 then print second number and set xpos of suffix to be 1 char further away
   if (date > 9){
     suffixposx = 10;
-    puttinychar(4+offset, 1, buffer[1]);
+    puttinychar(4 + offset, 1, buffer[1]);
     offset = 8; //offset to centre text if 4 chars
   }
 
@@ -1373,15 +1371,17 @@ void display_date()
   
   //get length of text in pixels, that way we can centre it on the display by divindin the remaining pixels b2 and using that as an offset
   len = 0;
-  while(monthnames[month][len]) { 
-    len++; 
-  }; 
+  char monthfullname[9];
+  strcpy_P(monthfullname, (char *)pgm_read_word(&(monthsfull[month])));
+  while(monthfullname[len]) {
+    len++;
+  };
   offset = (31 - ((len - 1) * 4)) / 2; //our offset to centre up the text
   i = 0;
-  while(monthnames[month][i])
-  {  
-    puttinychar((i * 4) + offset, 1, monthnames[month][i]); 
-    i++; 
+  while(monthfullname[i])
+  {
+    puttinychar((i * 4) + offset, 1, monthfullname[i]);
+    i++;
   }
   
   delay(1000);
@@ -2017,11 +2017,44 @@ void light()
   
   //Get light reading
   uint16_t lx = lux.GetLightIntensity();
+
+  //checks if display can be turn off if option to keep it on until a certain time is met
+  bool dont_turn_off = false;
+  if (display_mode > 2) {
+    byte hr = rtc[2];
+    switch(display_mode) {
+      case 3:
+      if (hr > 12 && hr < hour_off_1) {
+        dont_turn_off = true;
+      }
+      else {
+        dont_turn_off = false;
+      }
+      break;
+      case 4:
+      if (hr > 12 && hr < hour_off_2) {
+        dont_turn_off = true;
+      }
+      else {
+        dont_turn_off = false;
+      }
+      break;
+      case 5:
+      if (hr > 12 && hr < hour_off_3) {
+        dont_turn_off = true;
+      }
+      else {
+        dont_turn_off = false;
+      }
+      break;
+    }
+  }
+
   if (display_mode == 2) {
     shut = true;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies only when 4th button is used to turn it always off
   }
-  else if (lx == 0 && !shut && display_mode == 0) {
+  else if (lx == 0 && !shut && !dont_turn_off && (display_mode == 0 || display_mode > 2)) {
     shut = true;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough and 4th button option is normal
   }
@@ -2029,15 +2062,15 @@ void light()
     shut = false;
     set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
   }
-  Serial.println(lx);
 
+  //this runs if auto_intensity is true and display is not off, it defines the intensity based on the light sensor and calls set_devices to set intensity.
   if (auto_intensity && !shut) {
     byte i = 0;
     switch(lx) {
-      case 1:
+      case 0:
       i = 0;
       break;
-      case 2 ... 5:
+      case 1 ... 5:
       i = 1;
       break;
       case 6 ... 10:
@@ -2089,16 +2122,18 @@ void light()
 }
 
 
-//Routine called by light() to turn on/off matrix and by auto light intensity to adjust device intensity
+//Routine called by light() to turn on/off matrix and by auto light intensity to adjust device intensity. bool m = true (light intensity), false (matrix on/off), byte i = intensity
 void set_devices(bool m, byte i)
 {
 
   int devices = lc.getDeviceCount();
   for (int address = 0; address < devices; address++) {
     if (!m) {
+      //turns on/off matrix
       lc.shutdown(address, shut);
     }
     else {
+      //sets matrix intensity
       lc.setIntensity(address, i);
     }
   }
@@ -2106,17 +2141,17 @@ void set_devices(bool m, byte i)
 }
 
 
-//Routine to set display on/off options
+//Routine to set display on/off options (0 = normal, 1 = always on, 2 = always off)
 void display_options() {
 
   cls();
 
-  char options[3][9] = {
-    "Disp Nrm", "Disp On", "Disp Off"
+  char options[6][9] = {
+    "Disp Nrm", "Disp On", "Disp Off", "9.00pm", "10.00pm", "11.00pm"
   };
 
   display_mode++;
-  if (display_mode == 3) {
+  if (display_mode == 6) {
     display_mode = 0;
   }
 
