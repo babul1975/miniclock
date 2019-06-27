@@ -2031,10 +2031,10 @@ void light()
   if (auto_intensity && !shut) {
     byte i = 0;
     switch(lx) {
-      case 0:
+      case 1:
       i = 0;
       break;
-      case 1 ... 5:
+      case 2 ... 5:
       i = 1;
       break;
       case 6 ... 10:
