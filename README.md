@@ -7,8 +7,7 @@ Currently work in progress, almost complete.
 
 Planned features/changes:
 
-    # 4th Button - need to add option for keeping display on till a certain time.
-    # Change word mode to have quarter past/to and mins to etc.
+       # Change word mode to have quarter past/to and mins to etc.
 
 27 Jun 2019 - Changes:
 
