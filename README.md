@@ -11,6 +11,10 @@ Planned features/changes:
     # Change word mode to have quarter past/to and mins to etc.
     # Light Sensor - option to adjust intensity automatically
 
+27 Jun 2019 - Changes:
+
+              # Added 4th button for setting display on/off options
+
 26 Jun 2019 - Changes:
 
               # BH1750 working, turns off LED Matrix when completely dark.
@@ -24,7 +28,3 @@ Planned features/changes:
               # Added 6 fonts in total, one of them (no 6) is a cheap one; font 2 is cropped on right side to create the illusion of a new font.
               # Added random font mode in setup menu
               # Fixed missing randomSeed in code
-
-27 Jun 2019 - Changes:
-
-              # Added 4th button for setting display on/off options
