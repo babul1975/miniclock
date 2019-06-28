@@ -10,11 +10,11 @@ Tested on IDE v1.6.5
 
 =======================================================================
 
-Modified by Ratti3 - 27 Jun 2019
+Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,546 bytes 79%
+24,756 bytes 80%
 1,238 bytes 60%
 
 https://github.com/Ratti3/miniclock
@@ -52,8 +52,9 @@ bool shut = false;                       // Stores matrix sleep state
 int light_count = 0;                     // Counter for light routine
 byte display_mode = 0;                   // Default display on/off mode, used by light sensor. 0 = normal, 2 = always on, 3 - always off
 bool auto_intensity = true;              // Default auto light intensity setting
+byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor
 byte hour_off_1 = 21;                    // These three define the hour light sensor can turn off display if dark enough, format is 24 hours, the routine for
-byte hour_off_2 = 22;                    // this checks between 13.00 and one of these values
+byte hour_off_2 = 22;                    // this checks between 8.00 and one of these values
 byte hour_off_3 = 23;
 // These are set via the setup Font menu, see set_font_case() routine for all default values:
 byte font_style = 2;                     // Default clock large font style
@@ -138,7 +139,6 @@ void loop() {
 
   //run the clock with whatever mode is set by clock_mode - the default is set at top of code.
   switch(clock_mode) {
-        
   case 0:
     basic_mode();
     break;
@@ -160,7 +160,7 @@ void loop() {
 
 
 //plot a point on the display
-void plot (byte x, byte y, byte val) {
+void plot(byte x, byte y, byte val) {
 
   //select which matrix depending on the x coord
   byte address;
@@ -190,16 +190,27 @@ void plot (byte x, byte y, byte val) {
 
 //clear screen
 void clear_display() {
+  
   for (byte address = 0; address < 4; address++) {
     lc.clearDisplay(address);
   }
+
 }
+
 
 //fade screen down
 void fade_down() {
 
+  byte x = 0; //to hold temp intensity value
+  if (auto_intensity) {
+    x = auto_intensity_value;
+  }
+  else {
+    x = intensity;
+  }
+
   //fade from global intensity to 1
-  for (byte i = intensity; i > 0; i--) {
+  for (byte i = x; i > 0; i--) {
     for (byte address = 0; address < 4; address++) {
       lc.setIntensity(address, i);
     }
@@ -210,8 +221,9 @@ void fade_down() {
 
   //reset intentsity to global val
   for (byte address = 0; address < 4; address++) {
-    lc.setIntensity(address, intensity);
+    lc.setIntensity(address, x);
   }
+
 }
 
 
@@ -955,18 +967,10 @@ void slideanim(byte x, byte y, byte sequence, char current_c, char new_c) {
 void word_clock() {
 
   cls();
-
-  char numbers[19][10]   = {
-    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"
-  };
-  char numberstens[5][7] = {
-    "ten", "twenty", "thirty", "forty", "fifty"
-  };
   
   //potentially 3 lines to display
   char str_a[8];
-  char str_b[8];
+  char str_b[9];
   char str_c[8];
 
   //byte hours_y, mins_y; //hours and mins and positions for hours and mins lines
@@ -1029,47 +1033,116 @@ void word_clock() {
       int minsdigit = rtc[1] % 10;
       byte minsdigitten = (rtc[1] / 10) % 10;
 
+      char buffer[9];
+
       //if mins <= 10 , then top line has to read "minsdigti past" and bottom line reads hours
       if (mins < 10) {
-        strcpy (str_a, numbers[minsdigit - 1]);
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[minsdigit - 1])));
+        strcpy (str_a, buffer);
         strcpy (str_b, "PAST");
-        strcpy (str_c, numbers[hours - 1]);
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_c, buffer);
       }
 
       //if mins = 10, cant use minsdigit as above, so soecial case to print 10 past /n hour.
       if (mins == 10) {
-        strcpy (str_a, numbers[9]);
-        strcpy (str_b, " PAST");
-        strcpy (str_c, numbers[hours - 1]);
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[9])));
+        strcpy (str_a, buffer);
+        strcpy (str_b, "PAST");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_c, buffer);
+      }
+      else if (mins == 15) {
+        strcpy (str_a, "QUARTER");
+        strcpy (str_b, "PAST");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_c, buffer);
+      }
+      else if (mins == 20) {
+        strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[minsdigitten - 1])));
+        strcpy (str_a, buffer);
+        strcpy (str_b, "PAST");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_c, buffer);
+      }
+      else if (mins == 30) {
+        strcpy (str_a, "HALF");
+        strcpy (str_b, "PAST");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_c, buffer);
+      }
+      else if (mins == 40) {
+        strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[1])));
+        strcpy (str_a, buffer);
+        strcpy (str_b, "TO");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
+        strcpy (str_c, buffer);
+      }
+      else if (mins == 50) {
+        strcpy (str_a, "TEN");
+        strcpy (str_b, "TO");
+        if (hours == 13) {
+          strcpy (str_c, "ONE");
+        }
+        else {
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
+          strcpy (str_c, buffer);
+        }
+      }
+      else if (mins == 45) {
+        strcpy (str_a, "QUARTER");
+        strcpy (str_b, "TO");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
+        strcpy (str_c, buffer);
       }
 
       //if time is not on the hour - i.e. both mins digits are not zero,
       //then make first line read "hours" and 2 & 3rd lines read "minstens"  "mins" e.g. "three /n twenty /n one"
-      else if (minsdigitten != 0 && minsdigit != 0  ) {
+      else if (minsdigitten != 0 && minsdigit != 0) {
 
-        strcpy (str_a, numbers[hours - 1]);
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_a, buffer);
 
         //if mins is in the teens, use teens from the numbers array for the 2nd line, e.g. "fifteen"
-        //if (mins >= 11 && mins <= 19) {
-        if (mins <= 19) {
-          strcpy (str_b, numbers[mins - 1]);
+        if (mins == 11 || mins == 12 || mins == 16) {
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+          strcpy (str_a, buffer);
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[mins - 1])));
+          strcpy (str_b, buffer);
+          strcpy (str_c, "");
+        }
+        else if (mins == 13 || mins == 14 || (mins >= 17 && mins <= 19)) {
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+          strcpy (str_a, buffer);
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[mins - 1])));
+          strcpy (str_b, buffer);
+          strcpy (str_c, "");
+        }
+        else if (mins > 50) {
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[60 - (mins + 1)])));
+          strcpy (str_a, buffer);
+          strcpy (str_b, "TO");
+          if (hours == 12) {
+            strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 12])));
+            strcpy (str_c, buffer);
+          }
+          else {
+            strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
+            strcpy (str_c, buffer);
+          }
         }
         else {
-          strcpy (str_b, numberstens[minsdigitten - 1]);
-
-          strcpy (str_c, numbers[minsdigit - 1]);
+          strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[minsdigitten - 1])));
+          strcpy (str_b, buffer);
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[minsdigit - 1])));
+          strcpy (str_c, buffer);
         }
-      }
-      // if mins digit is zero, don't print it. read read "hours" "minstens" e.g. "three /n twenty"
-      else if (minsdigitten != 0 && minsdigit == 0  ) {
-        strcpy (str_a, numbers[hours - 1]);
-        strcpy (str_b, numberstens[minsdigitten - 1]);
-        strcpy (str_c, "");
       }
 
       //if both mins are zero, i.e. it is on the hour, the top line reads "hours" and bottom line reads "o'clock"
       else if (minsdigitten == 0 && minsdigit == 0  ) {
-        strcpy (str_a, numbers[hours - 1]);
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
+        strcpy (str_a, buffer);
         strcpy (str_b, "O'CLOCK");
         strcpy (str_c, "");
       }
@@ -1313,9 +1386,9 @@ void display_date()
   byte len = 0;
   char dayfullname[9];
   strcpy_P(dayfullname, (char *)pgm_read_word(&(daysfull[dow])));
-  while(dayfullname[len]) { 
+  while(dayfullname[len]) {
     len++; 
-  }; 
+  };
   byte offset = (31 - ((len - 1) * 4)) / 2; //our offset to centre up the text
       
   //print the name     
@@ -1461,13 +1534,13 @@ byte run_mode() {
 //set the next hour the clock will change mode when random mode is on, also does the random font mode
 void set_next_random() {
 
-  //set the next hour the clock mode will change - current time plus 1 - 4 hours
+  //set the next hour the clock mode will change - current time plus 1// - 4 hours
   get_time();
-  change_mode_time = rtc[2] + random(1, 5);
+  change_mode_time = rtc[2] + 1;//random(1, 5);
 
   //if change_mode_time now happens to be over 23, then set it to between 1 and 3am
   if (change_mode_time > 23) {
-    change_mode_time = random(1, 4);
+    change_mode_time = 1;//random(1, 4);
   }
 
   if (random_mode) {
@@ -1871,7 +1944,7 @@ void set_auto_intensity() {
   if (auto_intensity) {
 
     //turn auto intensity off
-    random_font_mode = false;
+    auto_intensity = false;
     //revert to default intensity level
     set_devices(true, intensity);
 
@@ -1950,7 +2023,7 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
     i++;
   }
 
-  delay(2000);
+  delay(1500);
   cls();
 
   //print digits bottom line
@@ -1965,11 +2038,11 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
   //wait for button input
   while (!buttonA.uniquePress()) {
 
-    while (buttonB.isPressed()){
+    while (buttonB.isPressed()) {
 
-      if(current_value < rollover_limit) { 
+      if(current_value < rollover_limit) {
         current_value++;
-      } 
+      }
       else {
         current_value = reset_value;
       }
@@ -1983,16 +2056,16 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
       delay(150);
     }
 
-    while (buttonC.isPressed()){
+    while (buttonC.isPressed()) {
 
-      if(current_value > reset_value) { 
+      if(current_value > reset_value) {
         current_value--;
-      } 
+      }
       else {
         current_value = rollover_limit;
       }
       //print the new value
-      itoa(current_value, buffer ,10);
+      itoa(current_value, buffer, 10);
       puttinychar(0 , 1, '>');
       puttinychar(4 , 1, buffer[0]);
       puttinychar(8 , 1, buffer[1]);
@@ -2033,17 +2106,16 @@ void get_time()
 //Routine to check light level and turn on/off matrix
 void light()
 {
-  
   //Get light reading
   uint16_t lx = lux.GetLightIntensity();
 
-  //checks if display can be turn off if option to keep it on until a certain time is met
+  //checks if display can be turned off if option to keep it on until a certain time is met
   bool dont_turn_off = false;
   if (display_mode > 2) {
     byte hr = rtc[2];
     switch(display_mode) {
       case 3:
-      if (hr > 12 && hr < hour_off_1) {
+      if (hr > 7 && hr < hour_off_1) {
         dont_turn_off = true;
       }
       else {
@@ -2051,7 +2123,7 @@ void light()
       }
       break;
       case 4:
-      if (hr > 12 && hr < hour_off_2) {
+      if (hr > 7 && hr < hour_off_2) {
         dont_turn_off = true;
       }
       else {
@@ -2059,7 +2131,7 @@ void light()
       }
       break;
       case 5:
-      if (hr > 12 && hr < hour_off_3) {
+      if (hr > 7 && hr < hour_off_3) {
         dont_turn_off = true;
       }
       else {
@@ -2084,58 +2156,57 @@ void light()
 
   //this runs if auto_intensity is true and display is not off, it defines the intensity based on the light sensor and calls set_devices to set intensity.
   if (auto_intensity && !shut) {
-    byte i = 0;
     switch(lx) {
       case 0:
-      i = 0;
+      auto_intensity_value = 0;
       break;
       case 1 ... 5:
-      i = 1;
+      auto_intensity_value = 1;
       break;
       case 6 ... 10:
-      i = 2;
+      auto_intensity_value = 2;
       break;
       case 11 ... 15:
-      i = 3;
+      auto_intensity_value = 3;
       break;
       case 16 ... 20:
-      i = 4;
+      auto_intensity_value = 4;
       break;
       case 21 ... 25:
-      i = 5;
+      auto_intensity_value = 5;
       break;
       case 26 ... 30:
-      i = 6;
+      auto_intensity_value = 6;
       break;
       case 31 ... 35:
-      i = 7;
+      auto_intensity_value = 7;
       break;
       case 36 ... 40:
-      i = 8;
+      auto_intensity_value = 8;
       break;
       case 41 ... 45:
-      i = 9;
+      auto_intensity_value = 9;
       break;
       case 46 ... 50:
-      i = 10;
+      auto_intensity_value = 10;
       break;
       case 51 ... 55:
-      i = 11;
+      auto_intensity_value = 11;
       break;
       case 56 ... 60:
-      i = 12;
+      auto_intensity_value = 12;
       break;
       case 61 ... 65:
-      i = 13;
+      auto_intensity_value = 13;
       break;
       case 66 ... 70:
-      i = 14;
+      auto_intensity_value = 14;
       break;
       case 71 ... 10000:
-      i = 15;
+      auto_intensity_value = 15;
       break;
     }
-    set_devices(true, i);
+    set_devices(true, auto_intensity_value);
   }
 
 }
