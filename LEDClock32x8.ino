@@ -14,8 +14,8 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,756 bytes 80%
-1,238 bytes 60%
+24,256 bytes 78%
+1,037 bytes 50%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
