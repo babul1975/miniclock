@@ -7,14 +7,16 @@ Currently work in progress, almost complete.
 
 Planned features/changes:
 
-       # Change word mode to have quarter past/to and mins to etc
-       # Hours and Minutes moved to progmen
-       # Fixed auto brightness resetting to gobal setting during fade_down
-       # Word mode has more words and fixed some errors with reversed word times
+# None
 
 28 Jun 2019 - Changes:
 
        # Added preview when changing font
+       # Change word mode to have quarter past/to and mins to etc
+       # Hours and Minutes moved to progmen
+       # Fixed auto brightness resetting to gobal setting during fade_down
+       # Word mode has more words and fixed some errors with reversed word times
+       # Random mode is now every hour
 
 27 Jun 2019 - Changes:
 
