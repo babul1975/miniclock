@@ -3,7 +3,7 @@ Video Here > https://youtu.be/CpQsMjI3FL0
 
 Arduino based mini LED matrix clock, with BME280 Sensor and BH1750 Light Sensor.
 
-Currently work in progress, almost complete.
+Complete (28 Jun 2019), unless bugs found.
 
 Planned features/changes:
 
@@ -17,6 +17,7 @@ Planned features/changes:
        # Fixed auto brightness resetting to gobal setting during fade_down
        # Word mode has more words and fixed some errors with reversed word times
        # Random mode is now every hour
+       # Made word clock progmem efficient
 
 27 Jun 2019 - Changes:
 
