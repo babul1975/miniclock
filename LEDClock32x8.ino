@@ -14,8 +14,8 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,422 bytes 79%
-1,028 bytes 50%
+24,200 bytes 78%
+1,037 bytes 50%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -38,7 +38,7 @@ https://youtu.be/CpQsMjI3FL0
 // pin 10 is connected to LOAD on the display
 LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and then sets 4 displays (max is 8 displays)
 
-//global variables (changeable)
+//global variables (changeable defaults)
 byte intensity = 2;                      // Default intensity/brightness (0-15), can be set via menu
 byte clock_mode = 0;                     // Default clock mode. Default = 0 (basic_mode)
 bool random_mode = 0;                    // Define random mode - changes the display type every few hours. Default = 0 (off)
@@ -62,6 +62,7 @@ unsigned long delaytime = 500;           // We always wait a bit between updates
 int rtc[7];                              // Holds real time clock output
 int light_count = 0;                     // Counter for light routine
 byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor, this value is set automatically
+char words[9];                           // Holds word clock words, retrieved from progmem
 
 char suffix[4][3] = {
   "st", "nd", "rd", "th"
@@ -1035,7 +1036,6 @@ void word_clock() {
       int minsdigit = rtc[1] % 10;
       byte minsdigitten = (rtc[1] / 10) % 10;
 
-      char buffer[9];
       char past[5] = "PAST";
       char to[3] = "TO";
       char half[5] = "HALF";
@@ -1043,119 +1043,119 @@ void word_clock() {
 
       //if mins <= 10 , then top line has to read "minsdigti past" and bottom line reads hours
       if (mins < 10) {
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[minsdigit - 1])));
-        strcpy (str_a, buffer);
+        progmem_numbers(0, minsdigit - 1);
+        strcpy (str_a, words);
         strcpy (str_b, past);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_c, words);
       }
 
       //if mins = 10, cant use minsdigit as above, so soecial case to print 10 past /n hour.
       if (mins == 10) {
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[9])));
-        strcpy (str_a, buffer);
+        progmem_numbers(0, 9);
+        strcpy (str_a, words);
         strcpy (str_b, past);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_c, words);
       }
       else if (mins == 15) {
         strcpy (str_a, quar);
         strcpy (str_b, past);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_c, words);
       }
       else if (mins == 20) {
-        strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[minsdigitten - 1])));
-        strcpy (str_a, buffer);
+        progmem_numbers(1, minsdigitten - 1);
+        strcpy (str_a, words);
         strcpy (str_b, past);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_c, words);
       }
       else if (mins == 30) {
         strcpy (str_a, half);
         strcpy (str_b, past);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_c, words);
       }
       else if (mins == 40) {
-        strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[1])));
-        strcpy (str_a, buffer);
+        progmem_numbers(1, 1);
+        strcpy (str_a, words);
         strcpy (str_b, to);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours);
+        strcpy (str_c, words);
       }
       else if (mins == 50) {
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[9])));
-        strcpy (str_a, buffer);
+        progmem_numbers(0, 9);
+        strcpy (str_a, words);
         strcpy (str_b, to);
         if (hours == 13) {
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[0])));
-          strcpy (str_c, buffer);
+          progmem_numbers(0, 0);
+          strcpy (str_c, words);
         }
         else {
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
-          strcpy (str_c, buffer);
+          progmem_numbers(0, hours);
+          strcpy (str_c, words);
         }
       }
       else if (mins == 45) {
         strcpy (str_a, quar);
         strcpy (str_b, to);
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
-        strcpy (str_c, buffer);
+        progmem_numbers(0, hours);
+        strcpy (str_c, words);
       }
 
       //if time is not on the hour - i.e. both mins digits are not zero,
       //then make first line read "hours" and 2 & 3rd lines read "minstens"  "mins" e.g. "three /n twenty /n one"
       else if (minsdigitten != 0 && minsdigit != 0) {
 
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_a, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_a, words);
 
         //if mins is in the teens, use teens from the numbers array for the 2nd line, e.g. "fifteen"
         if (mins == 11 || mins == 12 || mins == 16) {
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-          strcpy (str_a, buffer);
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[mins - 1])));
-          strcpy (str_b, buffer);
+          progmem_numbers(0, hours - 1);
+          strcpy (str_a, words);
+          progmem_numbers(0, mins - 1);
+          strcpy (str_b, words);
           strcpy (str_c, "");
         }
         else if (mins == 13 || mins == 14 || (mins >= 17 && mins <= 19)) {
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-          strcpy (str_a, buffer);
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[mins - 1])));
-          strcpy (str_b, buffer);
+          progmem_numbers(0, hours - 1);
+          strcpy (str_a, words);
+          progmem_numbers(0, mins - 1);
+          strcpy (str_b, words);
           strcpy (str_c, "");
         }
         else if (mins > 50) {
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[60 - (mins + 1)])));
-          strcpy (str_a, buffer);
+          progmem_numbers(0, 60 - (mins + 1));
+          strcpy (str_a, words);
           strcpy (str_b, to);
           if (hours == 12) {
-            strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 12])));
-            strcpy (str_c, buffer);
+            progmem_numbers(0, hours - 12);
+            strcpy (str_c, words);
           }
           else {
-            strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
-            strcpy (str_c, buffer);
+            progmem_numbers(0, hours);
+            strcpy (str_c, words);
           }
         }
         else {
-          strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[minsdigitten - 1])));
-          strcpy (str_b, buffer);
-          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[minsdigit - 1])));
-          strcpy (str_c, buffer);
+          progmem_numbers(1, minsdigitten - 1);
+          strcpy (str_b, words);
+          progmem_numbers(0, minsdigit - 1);
+          strcpy (str_c, words);
         }
       }
 
       //if both mins are zero, i.e. it is on the hour, the top line reads "hours" and bottom line reads "o'clock"
       else if (minsdigitten == 0 && minsdigit == 0  ) {
-        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
-        strcpy (str_a, buffer);
+        progmem_numbers(0, hours - 1);
+        strcpy (str_a, words);
         strcpy (str_b, "O'CLOCK");
         strcpy (str_c, "");
       }
 
-    }//end worknig out time
+    }//end working out time
 
     //run in a loop
     //print line a "twelve"
@@ -1298,6 +1298,19 @@ void word_clock() {
     }
   }
   fade_down();
+}
+
+
+//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens. i = index
+char progmem_numbers(byte m, byte i) {
+
+  if (m == 0) {
+    strcpy_P(words, (char *)pgm_read_word(&(numbers[i])));
+  }
+  else if (m == 1) {
+    strcpy_P(words, (char *)pgm_read_word(&(numberstens[i])));
+  }
+
 }
 
 
@@ -2210,7 +2223,7 @@ void light()
       case 66 ... 70:
       auto_intensity_value = 14;
       break;
-      case 71 ... 100000:
+      case 71 ... 65535:
       auto_intensity_value = 15;
       break;
     }
