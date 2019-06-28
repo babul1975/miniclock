@@ -14,8 +14,8 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,256 bytes 78%
-1,037 bytes 50%
+24,422 bytes 79%
+1,028 bytes 50%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -23,7 +23,7 @@ https://youtu.be/CpQsMjI3FL0
 ***********************************************************************/
 
 //include libraries:
-#include "ProgmemData.h"                 // Progmem Storage File, holds day and month names, frees up precious RAM
+#include "ProgmemData.h"                 // Progmem Storage File, holds day, month and time names, frees up precious RAM
 #include <LedControl.h>                  // v1.0.6 https://github.com/wayoda/LedControl
 #include <FontLEDClock.h>                // https://github.com/javastraat/arduino/blob/master/libraries/FontLEDClock/FontLEDClock.h - however, it has been modified
 #include <Wire.h>                        // Standard Arduino library
@@ -38,21 +38,14 @@ https://youtu.be/CpQsMjI3FL0
 // pin 10 is connected to LOAD on the display
 LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and then sets 4 displays (max is 8 displays)
 
-//global variables
-byte intensity = 2;                      // Default intensity/brightness (0-15)
+//global variables (changeable)
+byte intensity = 2;                      // Default intensity/brightness (0-15), can be set via menu
 byte clock_mode = 0;                     // Default clock mode. Default = 0 (basic_mode)
 bool random_mode = 0;                    // Define random mode - changes the display type every few hours. Default = 0 (off)
-bool random_font_mode = 0;               // Define font random mode - changes the font every few hours.
-byte old_mode = clock_mode;              // Stores the previous clock mode, so if we go to date or whatever, we know what mode to go back to after.
+bool random_font_mode = 0;               // Define font random mode - changes the font every few hours. 1 = random font on
 bool ampm = 0;                           // Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
-byte change_mode_time = 0;               // Holds hour when clock mode will next change if in random mode.
-unsigned long delaytime = 500;           // We always wait a bit between updates of the display
-int rtc[7];                              // Holds real time clock output
-bool shut = false;                       // Stores matrix sleep state
-int light_count = 0;                     // Counter for light routine
-byte display_mode = 0;                   // Default display on/off mode, used by light sensor. 0 = normal, 2 = always on, 3 - always off
+byte display_mode = 5;                   // Default display on/off mode, used by light sensor. 0 = normal, 1 = always on, 2 - always off, 3 - 5 = defined by hour_off_1,2,3
 bool auto_intensity = true;              // Default auto light intensity setting
-byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor
 byte hour_off_1 = 21;                    // These three define the hour light sensor can turn off display if dark enough, format is 24 hours, the routine for
 byte hour_off_2 = 22;                    // this checks between 8.00 and one of these values
 byte hour_off_3 = 23;
@@ -60,6 +53,15 @@ byte hour_off_3 = 23;
 byte font_style = 2;                     // Default clock large font style
 byte font_offset = 1;                    // Default clock large font offset adjustment
 byte font_cols = 6;                      // Default clock large font columns adjustment
+
+//global variables
+bool shut = false;                       // Stores matrix sleep state
+byte old_mode = clock_mode;              // Stores the previous clock mode, so if we go to date or whatever, we know what mode to go back to after.
+byte change_mode_time = 0;               // Holds hour when clock mode will next change if in random mode.
+unsigned long delaytime = 500;           // We always wait a bit between updates of the display
+int rtc[7];                              // Holds real time clock output
+int light_count = 0;                     // Counter for light routine
+byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor, this value is set automatically
 
 char suffix[4][3] = {
   "st", "nd", "rd", "th"
@@ -203,7 +205,7 @@ void fade_down() {
 
   byte x = 0; //to hold temp intensity value
   if (auto_intensity) {
-    x = auto_intensity_value;
+    x = auto_intensity_value;  //uses the last light sensor intensity settings, prevents display from constantly flicking between global and light sensor value
   }
   else {
     x = intensity;
@@ -1034,12 +1036,16 @@ void word_clock() {
       byte minsdigitten = (rtc[1] / 10) % 10;
 
       char buffer[9];
+      char past[5] = "PAST";
+      char to[3] = "TO";
+      char half[5] = "HALF";
+      char quar[8] = "QUARTER";
 
       //if mins <= 10 , then top line has to read "minsdigti past" and bottom line reads hours
       if (mins < 10) {
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[minsdigit - 1])));
         strcpy (str_a, buffer);
-        strcpy (str_b, "PAST");
+        strcpy (str_b, past);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
         strcpy (str_c, buffer);
       }
@@ -1048,41 +1054,43 @@ void word_clock() {
       if (mins == 10) {
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[9])));
         strcpy (str_a, buffer);
-        strcpy (str_b, "PAST");
+        strcpy (str_b, past);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
         strcpy (str_c, buffer);
       }
       else if (mins == 15) {
-        strcpy (str_a, "QUARTER");
-        strcpy (str_b, "PAST");
+        strcpy (str_a, quar);
+        strcpy (str_b, past);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
         strcpy (str_c, buffer);
       }
       else if (mins == 20) {
         strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[minsdigitten - 1])));
         strcpy (str_a, buffer);
-        strcpy (str_b, "PAST");
+        strcpy (str_b, past);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
         strcpy (str_c, buffer);
       }
       else if (mins == 30) {
-        strcpy (str_a, "HALF");
-        strcpy (str_b, "PAST");
+        strcpy (str_a, half);
+        strcpy (str_b, past);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 1])));
         strcpy (str_c, buffer);
       }
       else if (mins == 40) {
         strcpy_P(buffer, (char *)pgm_read_word(&(numberstens[1])));
         strcpy (str_a, buffer);
-        strcpy (str_b, "TO");
+        strcpy (str_b, to);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
         strcpy (str_c, buffer);
       }
       else if (mins == 50) {
-        strcpy (str_a, "TEN");
-        strcpy (str_b, "TO");
+        strcpy_P(buffer, (char *)pgm_read_word(&(numbers[9])));
+        strcpy (str_a, buffer);
+        strcpy (str_b, to);
         if (hours == 13) {
-          strcpy (str_c, "ONE");
+          strcpy_P(buffer, (char *)pgm_read_word(&(numbers[0])));
+          strcpy (str_c, buffer);
         }
         else {
           strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
@@ -1090,8 +1098,8 @@ void word_clock() {
         }
       }
       else if (mins == 45) {
-        strcpy (str_a, "QUARTER");
-        strcpy (str_b, "TO");
+        strcpy (str_a, quar);
+        strcpy (str_b, to);
         strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours])));
         strcpy (str_c, buffer);
       }
@@ -1121,7 +1129,7 @@ void word_clock() {
         else if (mins > 50) {
           strcpy_P(buffer, (char *)pgm_read_word(&(numbers[60 - (mins + 1)])));
           strcpy (str_a, buffer);
-          strcpy (str_b, "TO");
+          strcpy (str_b, to);
           if (hours == 12) {
             strcpy_P(buffer, (char *)pgm_read_word(&(numbers[hours - 12])));
             strcpy (str_c, buffer);
@@ -2202,7 +2210,7 @@ void light()
       case 66 ... 70:
       auto_intensity_value = 14;
       break;
-      case 71 ... 10000:
+      case 71 ... 100000:
       auto_intensity_value = 15;
       break;
     }
@@ -2237,7 +2245,7 @@ void display_options() {
   cls();
 
   char options[6][9] = {
-    "Disp Nrm", "Disp On", "Disp Off", "9.00pm", "10.00pm", "11.00pm"
+    "Disp Nrm", "Disp On", "Disp Off", "9.00 pm", "10.00 pm", "11.00 pm"
   };
 
   display_mode++;
