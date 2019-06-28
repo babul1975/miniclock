@@ -1662,7 +1662,7 @@ void set_font() {
     i++;
   }
   
-  delay(2000);
+  delay(1500);
   cls();
 
   byte set_font_value;
@@ -1672,11 +1672,12 @@ void set_font() {
   else {
     set_font_value = font_style;
   }
-  
-  set_font_value = get_font_value(set_font_value, 1, NUM_FONTS);
+
+  get_font_value(set_font_value, 1, NUM_FONTS);
+  //set_font_value = get_font_value(set_font_value, 1, NUM_FONTS);
 
   //set the font
-  set_font_case(set_font_value);
+  //set_font_case(set_font_value);
 
 }
 
@@ -1713,7 +1714,7 @@ int set_font_case(int value) {
     case 6:
       font_style = 2;
       font_offset = 0;
-      font_cols = 5;  //cheap way to create a new font (crop 1 column left side)
+      font_cols = 5;  //cheap way to create a new font (crop 1 column right side of font 2)
       break;
     case 7:
       font_style = 7;
@@ -1721,7 +1722,7 @@ int set_font_case(int value) {
       font_cols = 6;
       break;
   }
-  return value;
+  //return value;
 }
 
 //get user values for setting font
@@ -1735,7 +1736,9 @@ int get_font_value(int current_value, int min_value, int max_value) {
   delay(300);
   //wait for button input
   while (!buttonA.uniquePress()) {
-
+    char preview[4] = "   ";
+    //font preview numbers
+    itoa(123, preview, 10);
     while (buttonB.isPressed()){
 
       if(current_value < max_value) { 
@@ -1745,9 +1748,17 @@ int get_font_value(int current_value, int min_value, int max_value) {
         current_value = min_value;
       }
       //print the new value
-      itoa(current_value, buffer ,10);
+      cls();
+      itoa(current_value, buffer, 10);
       puttinychar(0, 1, '>'); 
-      puttinychar(4, 1, buffer[0]); 
+      puttinychar(4, 1, buffer[0]);
+      //preview the font and set the font
+      set_font_case(current_value);
+      byte i = 0;
+      while(preview[i]) {
+        putnormalchar(i * (font_cols + 1) + 10, 0, preview[i], font_style, font_cols);
+        i++;
+      }
       delay(150);
     }
 
@@ -1760,14 +1771,22 @@ int get_font_value(int current_value, int min_value, int max_value) {
         current_value = max_value;
       }
       //print the new value
+      cls();
       itoa(current_value, buffer ,10);
       puttinychar(0, 1, '>');
       puttinychar(4, 1, buffer[0]);
+      //preview the font and set the font
+      set_font_case(current_value);
+      byte i = 0;
+      while(preview[i]) {
+        putnormalchar(i * (font_cols + 1) + 10, 0, preview[i], font_style, font_cols);
+        i++;
+      }
       delay(150);
     }
 
   }
-  return current_value;
+  //return current_value;
 }
 
 
