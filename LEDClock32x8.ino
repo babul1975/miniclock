@@ -14,8 +14,8 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,200 bytes 78%
-1,037 bytes 50%
+24,022 bytes 78%
+1,017 bytes 49%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -111,8 +111,8 @@ void setup() {
   
   //Setup DS3231 RTC
   ds3231.begin();
-  //ds3231.adjust(DateTime(2019, 6, 23, 22, 30, 00));  // Set time manually
-  ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
+  //ds3231.adjust(DateTime(2019, 6, 29, 22, 59, 00));  // Set time manually
+  //ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
   if (!ds3231.begin()) {
     Serial.println("Couldn't find RTC");
     while(1);
@@ -778,58 +778,6 @@ void slide() {
           }
         }
       }
-
-      /*
-      //compare date digit 6 (ones) and (7) tens - if either of these change we need to update the date line. We compare date tens as say from Jan 31 -> Feb 01 then ones digit doesn't change
-      if ((digits_old[6] != digits_new[6]) || (digits_old[7] != digits_new[7])) {
-        //change the day shown. Loop below goes through each of the 3 chars in turn e.g. "MON"
-        for (byte day_char = 0; day_char <=2 ; day_char++){
-          //run the anim sequence for each char
-          for (byte seq = 0; seq <=8 ; seq++){
-            //the day (0 - 6) Read this number into the days char array. the seconds number in the array 0-2 gets the 3 chars of the day name, e.g. m o n
-            slideanim(6*day_char,8,seq,old_chars[day_char],days[rtc[3]][day_char]); //6 x day_char gives us the x pos for the char
-            delay(SLIDE_DELAY);
-          }
-          //save the old day chars into the old_chars array at array pos 0-2. We use this next time we change the day and feed it to the animation as the current char. The updated char is fed in as the new char.
-          old_chars[day_char] = days[rtc[3]][day_char];
-        }
-
-        //change the date tens digit (if needed) and ones digit. (the date ones digit wil alwaus change, but putting this in the 'if' loop makes it a bit neater code wise.)
-        for (byte i = 7; i >= 6; i--){
-          if (digits_old[i] != digits_new[i]) {
-            for (byte seq = 0; seq <=8 ; seq++){
-              itoa(digits_old[i],old_char,10);
-              itoa(digits_new[i],new_char,10);
-              slideanim(digits_x_pos[i],8,seq,old_char[0],new_char[0]);
-              delay(SLIDE_DELAY);
-            }
-          }
-        }
-
-        //print the day suffix "nd" "rd" "th" etc. First work out date 2 letter suffix - eg st, nd, rd, th
-        byte s = 3; //the pos to read our suffix array from.
-        byte date = rtc[4];
-        if(date == 1 || date == 21 || date == 31) {
-          s = 0;
-        }
-        else if (date == 2 || date == 22) {
-          s = 1;
-        }
-        else if (date == 3 || date == 23) {
-          s = 2;
-        }
-
-        for (byte suffix_char = 0; suffix_char <=1 ; suffix_char++){
-          for (byte seq = 0; seq <=8 ; seq++){
-            slideanim((suffix_char*6)+36,8,seq,old_chars[suffix_char+3],suffix[s][suffix_char]); // we pass in the old_char array char as the current char and the suffix array as the new char
-            delay(SLIDE_DELAY);
-          }
-          //save the suffic char in the old chars array at array pos 3 and 5.  We use these chars next time we change the suffix and feed it to the animation as the current char. The updated char is fed in as the new char.
-          old_chars[suffix_char+3] = suffix[s][suffix_char];
-        }
-      }//end do date line
-      */
-
 
       //save digita array tol old for comparison next loop
       for (byte i = 0; i <= 3; i++) {
@@ -1539,7 +1487,7 @@ byte run_mode() {
 
   //if random mode is on... check the hour when we change mode.
   if (random_mode || random_font_mode) {
-    //if hour value in change mode time = hours. then reurn false = i.e. exit mode.
+    //if hour value in change mode time = hours. then return false = i.e. exit mode.
     if (change_mode_time == rtc[2]) {
       //set the next random clock mode and time to change it
       set_next_random();
@@ -1561,7 +1509,7 @@ void set_next_random() {
 
   //if change_mode_time now happens to be over 23, then set it to between 1 and 3am
   if (change_mode_time > 23) {
-    change_mode_time = 1;//random(1, 4);
+    change_mode_time = 0;//random(1, 4);
   }
 
   if (random_mode) {
@@ -1670,7 +1618,7 @@ void set_random() {
   byte i = 0;
 
   //if random mode is on, turn it off
-  if (random_mode){
+  if (random_mode) {
 
     //turn random mode off
     random_mode = 0;
@@ -2252,7 +2200,7 @@ void set_devices(bool m, byte i)
 }
 
 
-//Routine to set display on/off options (0 = normal, 1 = always on, 2 = always off)
+//Routine to set display on/off options (0 = normal, 1 = always on, 2 = always off, 3 - 5 = after specific time)
 void display_options() {
 
   cls();
