@@ -23,7 +23,7 @@ Planned features/changes:
 
        # Added 4th button for setting display on/off options
        # Added font_style 7
-       # Work in progress: light sensor automatically adjusts intensity
+       # Light sensor automatically adjusts intensity
        # Automatic LED Intensity adjustment, can be turned off via setup menu
        # Added Light Sensor menu (button 4) with option to keep display on until a specific time
        # Moved month and day names to progmem to save RAM
