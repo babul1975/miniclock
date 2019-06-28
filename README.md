@@ -9,6 +9,10 @@ Planned features/changes:
 
        # Change word mode to have quarter past/to and mins to etc.
 
+28 Jun 2019 - Changes:
+
+       # Added preview when changing font
+
 27 Jun 2019 - Changes:
 
        # Added 4th button for setting display on/off options
@@ -17,7 +21,6 @@ Planned features/changes:
        # Automatic LED Intensity adjustment, can be turned off via setup menu
        # Added Light Sensor menu (button 4) with option to keep display on until a specific time
        # Moved month and day names to progmem to save RAM
-       # Added preview when changing font
 
 26 Jun 2019 - Changes:
 
