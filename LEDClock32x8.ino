@@ -14,7 +14,7 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,022 bytes 78%
+24,028 bytes 78%
 1,017 bytes 49%
 
 https://github.com/Ratti3/miniclock
@@ -2129,53 +2129,55 @@ void light()
       case 0:
       auto_intensity_value = 0;
       break;
-      case 1 ... 5:
+      case 2:
       auto_intensity_value = 1;
       break;
-      case 6 ... 10:
+      case 3 ... 4:
       auto_intensity_value = 2;
       break;
-      case 11 ... 15:
+      case 5 ... 6:
       auto_intensity_value = 3;
       break;
-      case 16 ... 20:
+      case 7 ... 10:
       auto_intensity_value = 4;
       break;
-      case 21 ... 25:
+      case 11 ... 20:
       auto_intensity_value = 5;
       break;
-      case 26 ... 30:
+      case 21 ... 40:
       auto_intensity_value = 6;
       break;
-      case 31 ... 35:
+      case 41 ... 60:
       auto_intensity_value = 7;
       break;
-      case 36 ... 40:
+      case 61 ... 80:
       auto_intensity_value = 8;
       break;
-      case 41 ... 45:
+      case 81 ... 100:
       auto_intensity_value = 9;
       break;
-      case 46 ... 50:
+      case 101 ... 130:
       auto_intensity_value = 10;
       break;
-      case 51 ... 55:
+      case 131 ... 160:
       auto_intensity_value = 11;
       break;
-      case 56 ... 60:
+      case 161 ... 190:
       auto_intensity_value = 12;
       break;
-      case 61 ... 65:
+      case 191 ... 220:
       auto_intensity_value = 13;
       break;
-      case 66 ... 70:
+      case 221 ... 240:
       auto_intensity_value = 14;
       break;
-      case 71 ... 65535:
+      case 241 ... 65535:
       auto_intensity_value = 15;
       break;
     }
     set_devices(true, auto_intensity_value);
+    //this is useful for help setting the values above
+    //Serial.println(lx);
   }
 
 }
