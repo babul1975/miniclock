@@ -14,7 +14,7 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,028 bytes 78%
+24,032 bytes 78%
 1,017 bytes 49%
 
 https://github.com/Ratti3/miniclock
@@ -2150,28 +2150,28 @@ void light()
       case 41 ... 60:
       auto_intensity_value = 7;
       break;
-      case 61 ... 80:
+      case 61 ... 100:
       auto_intensity_value = 8;
       break;
-      case 81 ... 100:
+      case 101 ... 150:
       auto_intensity_value = 9;
       break;
-      case 101 ... 130:
+      case 151 ... 200:
       auto_intensity_value = 10;
       break;
-      case 131 ... 160:
+      case 201 ... 250:
       auto_intensity_value = 11;
       break;
-      case 161 ... 190:
+      case 251 ... 300:
       auto_intensity_value = 12;
       break;
-      case 191 ... 220:
+      case 301 ... 350:
       auto_intensity_value = 13;
       break;
-      case 221 ... 240:
+      case 351 ... 400:
       auto_intensity_value = 14;
       break;
-      case 241 ... 65535:
+      case 401 ... 65535:
       auto_intensity_value = 15;
       break;
     }
