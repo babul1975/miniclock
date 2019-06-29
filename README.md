@@ -5,7 +5,8 @@ Arduino based mini LED matrix clock, with BME280 Sensor and BH1750 Light Sensor.
 
 Complete (28 Jun 2019), unless bugs found.
 
-Planned features/changes:
+Planned features/changes: None
+
 ~~~~~~~~~~~~~~~~~~~~~~~~ CONNECTING IT ALL UP ~~~~~~~~~~~~~~~~~~~~~~~~
 DS3231, BH1750 and BME280:
   SCL PINS = A5
@@ -24,9 +25,6 @@ Switches:
   D4 - Temp / -
   D5 - Display options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# None
 
 28 Jun 2019 - Changes:
 
