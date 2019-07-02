@@ -14,8 +14,8 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,032 bytes 78%
-1,017 bytes 49%
+24,172 bytes 78%
+1,016 bytes 49%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -40,7 +40,7 @@ LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and 
 
 //global variables (changeable defaults)
 byte intensity = 2;                      // Default intensity/brightness (0-15), can be set via menu
-byte clock_mode = 0;                     // Default clock mode. Default = 0 (basic_mode)
+byte clock_mode = 3;                     // Default clock mode. Default = 0 (basic_mode)
 bool random_mode = 0;                    // Define random mode - changes the display type every few hours. Default = 0 (off)
 bool random_font_mode = 0;               // Define font random mode - changes the font every few hours. 1 = random font on
 bool ampm = 0;                           // Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
@@ -111,7 +111,7 @@ void setup() {
   
   //Setup DS3231 RTC
   ds3231.begin();
-  //ds3231.adjust(DateTime(2019, 6, 29, 22, 59, 00));  // Set time manually
+  //ds3231.adjust(DateTime(2019, 6, 29, 12, 59, 40));  // Set time manually
   //ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
   if (!ds3231.begin()) {
     Serial.println("Couldn't find RTC");
@@ -988,16 +988,23 @@ void word_clock() {
       char to[3] = "TO";
       char half[5] = "HALF";
       char quar[8] = "QUARTER";
+      char oclk[8] = "O'CLOCK";
 
+      //if both mins are zero, i.e. it is on the hour, the top line reads "hours" and bottom line reads "o'clock"
+      if (minsdigitten == 0 && minsdigit == 0  ) {
+        progmem_numbers(0, hours - 1);
+        strcpy (str_a, words);
+        strcpy (str_b, oclk);
+        strcpy (str_c, "");
+      }
       //if mins <= 10 , then top line has to read "minsdigti past" and bottom line reads hours
-      if (mins < 10) {
+      else if (mins < 10) {
         progmem_numbers(0, minsdigit - 1);
         strcpy (str_a, words);
         strcpy (str_b, past);
         progmem_numbers(0, hours - 1);
         strcpy (str_c, words);
       }
-
       //if mins = 10, cant use minsdigit as above, so soecial case to print 10 past /n hour.
       if (mins == 10) {
         progmem_numbers(0, 9);
@@ -1029,45 +1036,50 @@ void word_clock() {
         progmem_numbers(1, 1);
         strcpy (str_a, words);
         strcpy (str_b, to);
-        progmem_numbers(0, hours);
+        if (hours == 12) {
+          progmem_numbers(0, hours - hours);
+        }
+        else {
+          progmem_numbers(0, hours);
+
+        }
         strcpy (str_c, words);
       }
       else if (mins == 50) {
         progmem_numbers(0, 9);
         strcpy (str_a, words);
         strcpy (str_b, to);
-        if (hours == 13) {
-          progmem_numbers(0, 0);
-          strcpy (str_c, words);
+        if (hours == 12) {
+          progmem_numbers(0, hours - hours);
         }
         else {
           progmem_numbers(0, hours);
-          strcpy (str_c, words);
+
         }
+        strcpy (str_c, words);
       }
       else if (mins == 45) {
         strcpy (str_a, quar);
         strcpy (str_b, to);
-        progmem_numbers(0, hours);
+        if (hours == 12) {
+          progmem_numbers(0, hours - hours);
+        }
+        else {
+          progmem_numbers(0, hours);
+
+        }
         strcpy (str_c, words);
       }
 
       //if time is not on the hour - i.e. both mins digits are not zero,
       //then make first line read "hours" and 2 & 3rd lines read "minstens"  "mins" e.g. "three /n twenty /n one"
-      else if (minsdigitten != 0 && minsdigit != 0) {
 
+      else if (minsdigitten != 0 && minsdigit != 0) {
         progmem_numbers(0, hours - 1);
         strcpy (str_a, words);
 
         //if mins is in the teens, use teens from the numbers array for the 2nd line, e.g. "fifteen"
-        if (mins == 11 || mins == 12 || mins == 16) {
-          progmem_numbers(0, hours - 1);
-          strcpy (str_a, words);
-          progmem_numbers(0, mins - 1);
-          strcpy (str_b, words);
-          strcpy (str_c, "");
-        }
-        else if (mins == 13 || mins == 14 || (mins >= 17 && mins <= 19)) {
+        if (mins >= 11 && mins <= 19) {
           progmem_numbers(0, hours - 1);
           strcpy (str_a, words);
           progmem_numbers(0, mins - 1);
@@ -1094,15 +1106,6 @@ void word_clock() {
           strcpy (str_c, words);
         }
       }
-
-      //if both mins are zero, i.e. it is on the hour, the top line reads "hours" and bottom line reads "o'clock"
-      else if (minsdigitten == 0 && minsdigit == 0  ) {
-        progmem_numbers(0, hours - 1);
-        strcpy (str_a, words);
-        strcpy (str_b, "O'CLOCK");
-        strcpy (str_c, "");
-      }
-
     }//end working out time
 
     //run in a loop
