@@ -14,8 +14,8 @@ Modified by Ratti3 - 28 Jun 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,172 bytes 78%
-1,016 bytes 49%
+24,346 bytes 79%
+1,020 bytes 49%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -2225,6 +2225,28 @@ void display_options() {
     puttinychar(i * 4, 1, options[display_mode][i]); 
     i++;
   }
+
+  delay(1000);
+  cls();
+
+  //display current lux value
+  char msg[4] = "LX:";
+  i = 0;
+  while(msg[i])
+  {
+    puttinychar(i * 4, 1, msg[i]);
+    i++;
+  }
+
+  char buffer[6];
+  dtostrf(lux.GetLightIntensity(), 5, 0, buffer);
+  i = 0;
+  while(buffer[i])
+  {
+    puttinychar(i * 4 + 12, 1, buffer[i]);
+    i++;
+  }
+  
   delay(1000);
 
 }
