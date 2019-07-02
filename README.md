@@ -28,6 +28,10 @@ Switches:
   D5 - Display options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+02 Jul 2019 - Changes:
+
+       # Fixed a few word clock issues
+
 28 Jun 2019 - Changes:
 
        # Added preview when changing font
