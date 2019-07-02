@@ -31,7 +31,7 @@ Switches:
 02 Jul 2019 - Changes:
 
        # Fixed a few word clock issues
-       # Lux (ButtonD) button additionally show current lux value from sensor
+       # Lux (ButtonD) button also shows current lux value from sensor
 
 28 Jun 2019 - Changes:
 
