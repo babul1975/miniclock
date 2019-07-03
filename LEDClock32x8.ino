@@ -10,11 +10,11 @@ Tested on IDE v1.6.5
 
 =======================================================================
 
-Modified by Ratti3 - 28 Jun 2019
+Modified by Ratti3 - 3 Jul 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,346 bytes 79%
+24,340 bytes 79%
 1,020 bytes 49%
 
 https://github.com/Ratti3/miniclock
@@ -40,7 +40,7 @@ LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and 
 
 //global variables (changeable defaults)
 byte intensity = 2;                      // Default intensity/brightness (0-15), can be set via menu
-byte clock_mode = 3;                     // Default clock mode. Default = 0 (basic_mode)
+byte clock_mode = 0;                     // Default clock mode. Default = 0 (basic_mode)
 bool random_mode = 0;                    // Define random mode - changes the display type every few hours. Default = 0 (off)
 bool random_font_mode = 0;               // Define font random mode - changes the font every few hours. 1 = random font on
 bool ampm = 0;                           // Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
@@ -1080,11 +1080,11 @@ void word_clock() {
 
         //if mins is in the teens, use teens from the numbers array for the 2nd line, e.g. "fifteen"
         if (mins >= 11 && mins <= 19) {
-          progmem_numbers(0, hours - 1);
-          strcpy (str_a, words);
           progmem_numbers(0, mins - 1);
-          strcpy (str_b, words);
-          strcpy (str_c, "");
+          strcpy (str_a, words);
+          strcpy (str_b, past);
+          progmem_numbers(0, hours - 1);
+          strcpy (str_c, words);
         }
         else if (mins > 50) {
           progmem_numbers(0, 60 - (mins + 1));
