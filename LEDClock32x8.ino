@@ -10,12 +10,12 @@ Tested on IDE v1.6.5
 
 =======================================================================
 
-Modified by Ratti3 - 3 Jul 2019
+Modified by Ratti3 - 4 Jul 2019
 Mini Clock v1.1
 Tested on IDE v1.8.9
 
-24,340 bytes 79%
-1,020 bytes 49%
+24,380 bytes 79%
+1,023 bytes 49%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -27,9 +27,10 @@ https://youtu.be/CpQsMjI3FL0
 #include <LedControl.h>                  // v1.0.6 https://github.com/wayoda/LedControl
 #include <FontLEDClock.h>                // https://github.com/javastraat/arduino/blob/master/libraries/FontLEDClock/FontLEDClock.h - however, it has been modified
 #include <Wire.h>                        // Standard Arduino library
-#include <RTClib.h>                      // v1.2.0 DS3231 RTC - https://github.com/adafruit/RTClib
+#include <RTClib.h>                      // v1.2.2 DS3231 RTC - https://github.com/adafruit/RTClib
 #include <Button.h>                      // https://github.com/tigoe/Button
-#include <Adafruit_BME280.h>             // v1.0.8 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
+#include <Adafruit_Sensor.h>             // v1.0.3 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
+#include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
 #include <BH1750FVI.h>                   // v1.1.1 BH1750 Light Sensor - https://github.com/PeterEmbedded/BH1750FVI
 
 // Setup LED Matrix
@@ -421,6 +422,10 @@ void small_mode() {
     }
     if (buttonC.uniquePress()) {
       display_thp();
+      return;
+    }
+    if (buttonD.uniquePress()) {
+      display_options();
       return;
     }
     
