@@ -28,6 +28,10 @@ Switches:
   D5 - Display options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+04 Jul 2019 - Changes:
+
+       # ButtonD was missing in small_clock
+
 02 Jul 2019 - Changes:
 
        # Fixed a few word clock issues
