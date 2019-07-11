@@ -7,7 +7,7 @@ Complete (28 Jun 2019), unless bugs found.
 
 Planned features/changes:
 
-    Thinking of using GPS\ESP01 for setting the time. Have ordered bit will test first.
+    ESP01 used to set time via NTP, ESP01 goes to sleep (wifi off), and only used once a day
 
 ~~~~~~~~~~~~~~~~~~~~~~~~ CONNECTING IT ALL UP ~~~~~~~~~~~~~~~~~~~~~~~~
 DS3231, BH1750 and BME280:
