@@ -2,8 +2,10 @@
 Video Here > https://youtu.be/CpQsMjI3FL0
 
 Arduino based mini LED matrix clock, with BME280 Sensor and BH1750 Light Sensor.
+Optional code for ESP01 to set time via NTP.
 
 Complete (28 Jun 2019), unless bugs found.
+ESP01 code work in progess.
 
 Planned features/changes:
 
