@@ -26,7 +26,17 @@ Switches:
   D3 - Date / +
   D4 - Temp / -
   D5 - Display options
+  
+ESP01 (optional):
+3.3 Power Regulator Required, and level shifter for the TX/RX pins
+  D7 - ESP01 TX
+  D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+11 Jul 2019 - Changes:
+
+       # Files for ESP01: ESP-01_NTP.ino and Arduino file: LEDClock32x8_ESP01-NTP.ino
+       # This adds support for an ESP01, time is obtained via NTP, work in progress
 
 04 Jul 2019 - Changes:
 
