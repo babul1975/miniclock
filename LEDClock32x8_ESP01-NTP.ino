@@ -10,12 +10,12 @@ Tested on IDE v1.6.5
 
 =======================================================================
 
-Modified by Ratti3 - 4 Jul 2019
-Mini Clock v1.1
+Modified by Ratti3 - 13 Jul 2019
+Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-24,380 bytes 79%
-1,023 bytes 49%
+28,700 bytes 93%
+946 bytes 46%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -27,12 +27,13 @@ https://youtu.be/CpQsMjI3FL0
 #include <LedControl.h>                  // v1.0.6 https://github.com/wayoda/LedControl
 #include <FontLEDClock.h>                // https://github.com/javastraat/arduino/blob/master/libraries/FontLEDClock/FontLEDClock.h - however, it has been modified
 #include <Wire.h>                        // Standard Arduino library
-#include <RTClib.h>                      // v1.2.2 DS3231 RTC - https://github.com/adafruit/RTClib
+#include <RTClib.h>                      // v1.2.3 DS3231 RTC - https://github.com/adafruit/RTClib
 #include <Button.h>                      // https://github.com/tigoe/Button
 #include <Adafruit_Sensor.h>             // v1.0.3 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
 #include <BH1750FVI.h>                   // v1.1.1 BH1750 Light Sensor - https://github.com/PeterEmbedded/BH1750FVI
 #include <SoftwareSerial.h>              // Used to show NTP data from ESP01
+#include <EEPROM.h>                      // Used to store DST flag to Arduino EEPROM
 
 // Setup LED Matrix
 // pin 12 is connected to the DataIn on the display
@@ -40,28 +41,32 @@ https://youtu.be/CpQsMjI3FL0
 // pin 10 is connected to LOAD on the display
 LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and then sets 4 displays (max is 8 displays)
 
-//global variables (changeable defaults)
-byte intensity = 2;                      // Default intensity/brightness (0-15), can be set via menu
-byte clock_mode = 0;                     // Default clock mode. Default = 0 (basic_mode)
-bool random_mode = 0;                    // Define random mode - changes the display type every few hours. Default = 0 (off)
-bool random_font_mode = 0;               // Define font random mode - changes the font every few hours. 1 = random font on
-bool ampm = 0;                           // Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
-byte display_mode = 5;                   // Default display on/off mode, used by light sensor. 0 = normal, 1 = always on, 2 - always off, 3 - 5 = defined by hour_off_1,2,3
-bool auto_intensity = true;              // Default auto light intensity setting
+//global variables (changeable defaults), numbers in [] brackets are the EEPROM storage location for that value
+  // Clock settings
+byte intensity = 2;                      // [200] Default intensity/brightness (0-15), can be set via menu
+byte clock_mode = 0;                     // [201] Default clock mode. Default = 0 (basic_mode)
+bool random_mode = 0;                    // [206] Define random mode - changes the display type every few hours. Default = 0 (off)
+bool random_font_mode = 0;               // [207] Define font random mode - changes the font every few hours. 1 = random font on
+bool ampm = 0;                           // [208] Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
+  // Light settings
+byte display_mode = 5;                   // [202] Default display on/off mode, used by light sensor. 0 = normal, 1 = always on, 2 - always off, 3 - 5 = defined by hour_off_1,2,3
+bool auto_intensity = 1;                 // [209] Default auto light intensity setting
 byte hour_off_1 = 21;                    // These three define the hour light sensor can turn off display if dark enough, format is 24 hours, the routine for
 byte hour_off_2 = 22;                    // this checks between 8.00 and one of these values
 byte hour_off_3 = 23;
-// These are set via the setup Font menu, see set_font_case() routine for all default values:
-byte font_style = 2;                     // Default clock large font style
-byte font_offset = 1;                    // Default clock large font offset adjustment
-byte font_cols = 6;                      // Default clock large font columns adjustment
-bool dst_mode = 1;                       // Enable DST function, 1 = enable, 0 = disable
-int utc_offset = 1;                      // UTC offset adjustment
-bool ntp_mode = 1;                       // Enable NTP function, 1 = enable, 0 = disable
-byte ntp_offset = 1;                     // Number of seconds to adjust NTP value before applying to DS3231
+  // Font settings - these are set via the setup Font menu, see set_font_case() routine for all default values:
+byte font_style = 2;                     // [203] Default clock large font style
+byte font_offset = 1;                    // [204] Default clock large font offset adjustment
+byte font_cols = 6;                      // [205] Default clock large font columns adjustment
+  // DST UTC settings
+bool dst_mode = 1;                       // [210] Enable DST function, 1 = enable, 0 = disable
+  // NTP Settings
+bool ntp_mode = 1;                       // [211] Enable NTP function, 1 = enable, 0 = disable
+byte ntp_adjust = 1;                     // Number of seconds to adjust NTP value before applying to DS3231, takes a few hundred milliseconds to process the ESP01 data
+int8_t utc_offset = 0;                   // [213] UTC offset adjustment, hours
 
 //global variables
-bool shut = false;                       // Stores matrix sleep state
+bool shut = 0;                           // Stores matrix on/off state
 byte old_mode = clock_mode;              // Stores the previous clock mode, so if we go to date or whatever, we know what mode to go back to after.
 byte change_mode_time = 0;               // Holds hour when clock mode will next change if in random mode.
 unsigned long delaytime = 500;           // We always wait a bit between updates of the display
@@ -69,18 +74,24 @@ int rtc[7];                              // Holds real time clock output
 int light_count = 0;                     // Counter for light routine
 byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor, this value is set automatically
 char words[1];                           // Holds word clock words, retrieved from progmem
-bool DST = 0;                            // Stores if DST should be calculcated
-
-char suffix[4][3] = {
-  "st", "nd", "rd", "th"
-};  //date suffix array, used in slide, basic_mode and jumble modes. e,g, 1st 2nd ...
+bool DST = 0;                            // [212] Holds DST applied value, 1 = summertime +1hr applied, this ensure DST +1/-1 runs only once
+byte FirstRunValue = 128;                // The check digits to see if EEPROM has values saved, change this [1-254] if you want to reset EEPROM to default values
+byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValue is saved
 
 //define constants
-#define NUM_DISPLAY_MODES  3                    // Number display modes (conting zero as the first mode)
-#define NUM_SETTINGS_MODES 7                    // Number settings modes = 7 (counting zero as the first mode)
+#define NUM_DISPLAY_MODES  3                    // Number display modes = 3 (conting zero as the first mode)
+#define NUM_SETTINGS_MODES 8                    // Number settings modes = 8 (counting zero as the first mode)
 #define NUM_FONTS          7                    // Number of fonts, as defined in FontLEDClock.h
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
 #define cls                clear_display        // Clear display
+#define RandomSeed         A0                   // Pin used to generate random seed
+#define TX                 6                    // RX pin of ESP01
+#define RX                 7                    // TX pin of ESP01
+//these can be used to change the order of dosplays, some displays from ebay are wrong way round
+#define Matrix0            0
+#define Matrix1            1
+#define Matrix2            2
+#define Matrix3            3
 
 RTC_DS3231 ds3231;                              // Create RTC object
 Adafruit_BME280 bme;                            // BME280 object (pins 4 and 5 and 3.3v)
@@ -91,7 +102,7 @@ Button buttonB = Button(3, BUTTON_PULLUP);      // Display date / + button
 Button buttonC = Button(4, BUTTON_PULLUP);      // Temp/Humidity/Pressure / - button
 Button buttonD = Button(5, BUTTON_PULLUP);      // Display options button
 
-SoftwareSerial esp(7, 6); // RX, TX             // Software Serial pins, ESP01 serial connects to these
+SoftwareSerial esp(RX, TX); // 7, 6             // Software Serial 7 and 6, ESP01 serial connects to these, (pins RX and TX and 3.3v via external regulator)
 
 void setup() {
 
@@ -101,27 +112,24 @@ void setup() {
   digitalWrite(5, HIGH);                        // turn on pullup resistor for button on pin 5
   
   Serial.begin(9600); //start serial
-  esp.begin(9600); //start software serial for ESP01
+  esp.begin(9600);    //start software serial for ESP01
 
   //initialize the 4 matrix panels
   //we have already set the number of devices when we created the LedControl
   int devices = lc.getDeviceCount();
   //we have to init all devices in a loop
   for (int address = 0; address < devices; address++) {
-    /*The MAX72XX is in power-saving mode on startup*/
-    lc.shutdown(address, false);
-    /* Set the brightness to a medium values */
-    lc.setIntensity(address, intensity);
-    /* and clear the display */
-    lc.clearDisplay(address);
+    lc.shutdown(address, false);         // The MAX72XX is in power-saving mode on startup
+    lc.setIntensity(address, intensity); // Set the brightness to a medium values
+    lc.clearDisplay(address);            // and clear the display
   }
 
   //I2C
   Wire.begin();
-  
+
   //Setup DS3231 RTC
   ds3231.begin();
-  ds3231.adjust(DateTime(2010, 6, 29, 12, 59, 40));  // Set time manually
+  //ds3231.adjust(DateTime(2010, 6, 29, 12, 59, 40));  // Set time manually
   //ds3231.adjust(DateTime(__DATE__, __TIME__)); // sets the RTC to the date & time this sketch was compiled
   if (!ds3231.begin()) {
     Serial.println("Couldn't find RTC");
@@ -141,12 +149,206 @@ void setup() {
   lux.begin();
 
   //what is this silliness, needed for random() to work properly
-  randomSeed(analogRead(A0));
+  randomSeed(analogRead(RandomSeed)); // Pin A0
 
   //Show software version & startup message
   printver();
 
-  ESPNTP();
+  byte FirstRun = eeprom_read_byte(FirstRunAddress);
+  bool FR = 0;
+  if (FirstRun == FirstRunValue) FR = 1;
+
+  byte value1;
+  bool value2;
+  int8_t value3;
+
+  /*Serial.print("Read FirstRun: [");
+  Serial.print(FirstRunAddress);
+  Serial.print("] ");
+  Serial.println(FirstRun);*/
+
+  byte i = 200;
+  while (i < 214) {
+    if (i <= 205) {
+    
+      value1 = eeprom_read_byte(i);
+      if (i == 200) {
+        if (FR) {
+          intensity = value1;
+        }
+        else {
+          value1 = intensity;
+        }
+      }
+      else if (i == 201) {
+        if (FR) {
+          clock_mode = value1;
+        }
+        else {
+          value1 = clock_mode;
+        }
+      }
+      else if (i == 202) {
+        if (FR) {
+          display_mode = value1;
+        }
+        else {
+          value1 = display_mode;
+        }
+      }
+      else if (i == 203) {
+        if (FR) {
+          font_style = value1;
+        }
+        else {
+          value1 = font_style;
+        }
+      }
+      else if (i == 204) {
+        if (FR) {
+          font_offset = value1;
+        }
+        else {
+          value1 = font_offset;
+        }
+      }
+      else if (i == 205) {
+        if (FR) {
+          font_cols = value1;
+        }
+        else {
+          value1 = font_cols;
+        }
+      }
+
+      if (!FR) {
+        eeprom_save(i, value1, 0, 0);
+        /*Serial.print("FirstRun - Update Byte: [");
+        Serial.print(i);
+        Serial.print("] ");
+        Serial.println(value1);*/
+      }
+      /*Serial.print("Read Byte: [");
+      Serial.print(i);
+      Serial.print("] ");
+      Serial.println(value1);*/
+    
+    }
+    else if (i >= 206 && i <= 212) {
+    
+      value2 = eeprom_read_bool(i);
+      if (i == 206) {
+        if (FR) {
+          random_mode = value2;
+        }
+        else {
+          value2 = random_mode;
+        }
+      }
+      else if (i == 207) {
+        if (FR) {
+          random_font_mode = value2;
+        }
+        else {
+          value2 = random_font_mode;
+        }
+      }
+      else if (i == 208) {
+        if (FR) {
+          ampm = value2;
+        }
+        else {
+          value2 = ampm;
+        }
+      }
+      else if (i == 209) {
+        if (FR) {
+          auto_intensity = value2;
+        }
+        else {
+          value2 = auto_intensity;
+        }
+      }
+      else if (i == 210) {
+        if (FR) {
+          dst_mode = value2;
+        }
+        else {
+          value2 = dst_mode;
+        }
+      }
+      else if (i == 211) {
+        if (FR) {
+          ntp_mode = value2;
+        }
+        else {
+          value2 = ntp_mode;
+        }
+      }
+      else if (i == 212) {
+        if (FR) {
+          DST = value2;
+        }
+        else {
+          value2 = DST;
+        }
+      }
+
+      if (!FR) {
+        eeprom_save(i, 0, value2, 0);
+        /*Serial.print("FirstRun - Update Bool: [");
+        Serial.print(i);
+        Serial.print("] ");
+        Serial.println(value2);*/
+      }
+      /*Serial.print("Read Bool:");
+      Serial.print(i);
+      Serial.print("] ");
+      Serial.println(value2);*/
+
+    }
+    else if (i == 213) {
+    
+      value3 = eeprom_read_int8_t(i);
+      if (FR) {
+        utc_offset = value3;
+      }
+      else {
+        value3 = utc_offset;
+      }
+
+      if (!FR) {
+        eeprom_save(i, 0, 0, value3);
+        /*Serial.print("FirstRun - Update int8_t:");
+        Serial.print(i);
+        Serial.print("] ");
+        Serial.println(value3);*/
+      }
+      /*Serial.print("Read int8_t:");
+      Serial.print(i);
+      Serial.print("] ");
+      Serial.println(value3);*/
+    
+    }
+    i++;
+  }
+
+  if (!FR) {
+    eeprom_save(FirstRunAddress, FirstRunValue, 0, 0);
+    /*Serial.print("Update FirstRun: [");
+    Serial.print(FirstRunAddress);
+    Serial.print("] ");
+    Serial.println(FirstRunValue);*/
+  }
+
+  //get time from NTP server if ntp_mode = 1
+  if (ntp_mode) {
+    ntp();
+  }
+  if (!ntp_mode && dst_mode) {
+    //run dst() calculation, 0 means not triggered by ntp()
+    dst(0);
+  }
 
 }
 
@@ -158,7 +360,7 @@ void loop() {
     basic_mode();
     break;
   case 1:
-   small_mode();
+    small_mode();
     break;
   case 2:
     slide();
@@ -174,24 +376,88 @@ void loop() {
 }
 
 
+//function to save settings to Arduino EEPROM
+void eeprom_save(byte Address, byte value1, bool value2, int8_t value3) {
+
+  switch(Address) {
+    case 200 ... 205:
+      EEPROM.update(Address, value1);
+      Serial.print("Update Byte: [");
+      Serial.print(Address);
+      Serial.print("] ");
+      Serial.println(value1);
+      break;
+    case 206 ... 212:
+      EEPROM.update(Address, value2);
+      Serial.print("Update Bool: [");
+      Serial.print(Address);
+      Serial.print("] ");
+      Serial.println(value2);
+      break;
+    case 213:
+      EEPROM.update(Address, value3);
+      Serial.print("Update int8_t: [");
+      Serial.print(Address);
+      Serial.print("] ");
+      Serial.println(value3);
+      break;
+    case 255:
+      EEPROM.update(Address, value1);
+      Serial.print("Update Byte: [");
+      Serial.print(Address);
+      Serial.print("] ");
+      Serial.println(value1);
+      break;
+  }
+  
+}
+
+
+//function to read EEPROM data as byte
+byte eeprom_read_byte(byte Address) {
+  
+  byte result = EEPROM.read(Address);
+  return result;
+  
+}
+
+
+//function to read EEPROM data as bool
+bool eeprom_read_bool(byte Address) {
+  
+  bool result = (bool)EEPROM.read(Address);
+  return result;
+  
+}
+
+
+//function to read EEPROM data as int8_t
+int8_t eeprom_read_int8_t(byte Address) {
+  
+  int8_t result = (int8_t)EEPROM.read(Address);
+  return result;
+  
+}
+
+
 //plot a point on the display
 void plot(byte x, byte y, byte val) {
 
   //select which matrix depending on the x coord
   byte address;
   if (x >= 0 && x <= 7)   {
-    address = 0;
+    address = Matrix0;
   }
   if (x >= 8 && x <= 15)  {
-    address = 1;
+    address = Matrix1;
     x = x - 8;
   }
   if (x >= 16 && x <= 23) {
-    address = 2;
+    address = Matrix2;
     x = x - 16;
   }
   if (x >= 24 && x <= 31) {
-    address = 3;
+    address = Matrix3;
     x = x - 24;
   }
 
@@ -200,6 +466,7 @@ void plot(byte x, byte y, byte val) {
   } else {
     lc.setLed(address, y, x, false);
   }
+
 }
 
 
@@ -242,12 +509,11 @@ void fade_down() {
 }
 
 
-
 //power up led test & display software version number
 void printver() {
 
   byte i = 0;
-  char ver_a[9] = "Vers 1.1";
+  char ver_a[9] = "Vers 1.2";
   char ver_b[9] = " Ratti3 ";
 
   //test all leds.
@@ -274,20 +540,20 @@ void printver() {
   }
   delay(700);
   fade_down();
+
 }
 
 
-// puttinychar
 // Copy a 3x5 character glyph from the myfont data structure to display memory, with its upper left at the given coordinate
 // This is unoptimized and simply uses plot() to draw each dot.
-void puttinychar(byte x, byte y, char c)
-{
+void puttinychar(byte x, byte y, char c) {
+
   byte dots;
   if (c >= 'A' && c <= 'Z' || (c >= 'a' && c <= 'z') ) {
     c &= 0x1F;   // A-Z maps to 1-26
   }
   else if (c >= '0' && c <= '9') {
-    c = (c - '0') + 32;
+    c = (c - '0') + 33;
   }
   else if (c == ' ') {
     c = 0; // space
@@ -304,8 +570,11 @@ void puttinychar(byte x, byte y, char c)
   else if (c == '>') {
     c = 30; // >
   }
+  else if (c == '-') {
+    c = 31; // -
+  }
   else if (c == '/') {
-    c = 31; // forward slash
+    c = 32; // forward slash
   }
 
   for (byte col = 0; col < 3; col++) {
@@ -317,12 +586,12 @@ void puttinychar(byte x, byte y, char c)
         plot(x + col, y + row, 0);
     }
   }
+
 }
 
 
 // fs = font_style, fc = font_cols
-void putnormalchar(byte x, byte y, char c, byte fs, byte fc)
-{
+void putnormalchar(byte x, byte y, char c, byte fs, byte fc) {
 
   byte dots;
   if (c >= 'A' && c <= 'Z' ) {
@@ -395,12 +664,11 @@ void putnormalchar(byte x, byte y, char c, byte fs, byte fc)
       //}
     }
   }
+
 }
 
 
-//small_mode
 //show the time in small 3x5 characters with seconds display
-
 void small_mode() {
 
   char textchar[8]; // the 16 characters on the display
@@ -448,7 +716,7 @@ void small_mode() {
       char buffer[3];
       itoa(secs, buffer, 10);
 
-      //fix - as otherwise if num has leading zero, e.g. "03" secs, itoa coverts this to chars with space "3 ".
+      //fix - as otherwise if num has leading zero, e.g. "03" secs, itoa converts this to chars with space "3 ".
       if (secs < 10) {
         buffer[1] = buffer[0];
         buffer[0] = '0';
@@ -532,13 +800,13 @@ void small_mode() {
     delay(50);
   }
   fade_down();
+
 }
 
 
-// basic_mode()
 // show the time in 5x7 characters
-void basic_mode()
-{
+void basic_mode() {
+
   cls();
 
   char buffer[3];   //for int to char conversion to turn rtc values into chars we can print on screen
@@ -670,7 +938,6 @@ void basic_mode()
       //print hours ones digit
       putnormalchar(7 - offset + font_offset, 0, buffer[1], font_style, font_cols);
 
-
       //print mins
       //add leading zero if mins < 10
       itoa (mins, buffer, 10);
@@ -684,6 +951,7 @@ void basic_mode()
     }
   }
   fade_down();
+
 }
 
 
@@ -751,19 +1019,10 @@ void slide() {
       }
 
       //split all date and time into individual digits - stick in digits_new array
-
-      //rtc[0] = secs                        //array pos and digit stored
-      //digits_new[0] = (rtc[0]%10);           //0 - secs ones
-      //digits_new[1] = ((rtc[0]/10)%10);      //1 - secs tens
-      //rtc[1] = mins
       digits_new[0] = (rtc[1] % 10);         //2 - mins ones
       digits_new[1] = ((rtc[1] / 10) % 10);  //3 - mins tens
-      //rtc[2] = hours
       digits_new[2] = (hours % 10);         //4 - hour ones
       digits_new[3] = ((hours / 10) % 10);  //5 - hour tens
-      //rtc[4] = date
-      //digits_new[6] = (rtc[4]%10);           //6 - date ones
-      //digits_new[7] = ((rtc[4]/10)%10);      //7 - date tens
 
       //draw initial screen of all chars. After this we just draw the changes.
 
@@ -802,6 +1061,7 @@ void slide() {
     }//secs/oldsecs
   }//while loop
   fade_down();
+
 }
 
 
@@ -880,7 +1140,6 @@ void slideanim(byte x, byte y, byte sequence, char current_c, char new_c) {
   }
 
 
-
   //if sequence is above 2, we also need to start drawing the new char
   if (sequence >= 2) {
 
@@ -926,8 +1185,8 @@ void slideanim(byte x, byte y, byte sequence, char current_c, char new_c) {
       start_y++;//add one to y so we draw next row one down
     }
   }
+  
 }
-
 
 
 //print a clock using words rather than numbers
@@ -976,7 +1235,6 @@ void word_clock() {
 
     get_time(); //get the time from the clock chip
     mins = rtc[1];  //get mins
-
 
     //if mins is different from old_mins - redraw display
     if (mins != old_mins) {
@@ -1268,7 +1526,8 @@ void word_clock() {
 }
 
 
-//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens. i = index
+//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens, 2 = clockset, 3 = mainmenu, 4 = setupmenu
+//5 = boolmenu, 6 - displayoptions, 7 = suffix. i = index
 char progmem_numbers(byte m, byte i) {
 
   if (m == 0) {
@@ -1276,6 +1535,24 @@ char progmem_numbers(byte m, byte i) {
   }
   else if (m == 1) {
     strcpy_P(words, (char *)pgm_read_word(&(numberstens[i])));
+  }
+  else if (m == 2) {
+    strcpy_P(words, (char *)pgm_read_word(&(clockset[i])));
+  }
+  else if (m == 3) {
+    strcpy_P(words, (char *)pgm_read_word(&(mainmenu[i])));
+  }
+  else if (m == 4) {
+    strcpy_P(words, (char *)pgm_read_word(&(setupmenu[i])));
+  }
+  else if (m == 5) {
+    strcpy_P(words, (char *)pgm_read_word(&(boolmenu[i])));
+  }
+  else if (m == 6) {
+    strcpy_P(words, (char *)pgm_read_word(&(displayoptions[i])));
+  }
+  else if (m == 7) {
+    strcpy_P(words, (char *)pgm_read_word(&(suffix[i])));
   }
 
 }
@@ -1357,9 +1634,9 @@ void display_thp()
     
 }
 
+
 //display_date - print the day of week, date and month with a flashing cursor effect
-void display_date()
-{
+void display_date() {
 
   cls();
   //read the date from the DS3231
@@ -1422,8 +1699,9 @@ void display_date()
   }
 
   //print the 2 suffix characters
-  puttinychar(suffixposx + offset, 1, suffix[s][0]); 
-  puttinychar(suffixposx + 4 + offset, 1, suffix[s][1]); 
+  progmem_numbers(7, s);
+  puttinychar(suffixposx + offset, 1, words[0]);
+  puttinychar(suffixposx + 4 + offset, 1, words[1]);
  
   delay(1000);
   fade_down();
@@ -1447,20 +1725,19 @@ void display_date()
   
   delay(1000);
   fade_down();
+
 }
 
 
 //dislpay menu to change the clock mode
 void switch_mode() {
 
+  //not sure why, but this is needed to stop ampm bool getting messed up
+  ampm = eeprom_read_bool(208);
+  
   //remember mode we are in. We use this value if we go into settings mode, so we can change back from settings mode (6) to whatever mode we were in.
   old_mode = clock_mode;
 
-  const char* modes[] = {
-    ">Basic", ">Small", ">Slide", ">Words", ">Setup"
-  };
-
-  byte next_clock_mode;
   byte firstrun = 1;
 
   //loop waiting for button (timeout after 35 loops to return to mode X)
@@ -1479,25 +1756,25 @@ void switch_mode() {
         clock_mode = 0;
       }
 
-      //print arrown and current clock_mode name on line one and print next clock_mode name on line two
-      char str_top[9];
-
-      strcpy (str_top, modes[clock_mode]);
-
-      next_clock_mode = clock_mode + 1;
-      if (next_clock_mode >  NUM_DISPLAY_MODES + 1) {
-        next_clock_mode = 0;
-      }
+      //print arrow and current clock_mode name on line one and print next clock_mode name on line two
+      progmem_numbers(3, clock_mode);
 
       byte i = 0;
-      while (str_top[i]) {
-        puttinychar(i * 4 + 1, 1, str_top[i]);
+      while (words[i]) {
+        puttinychar(i * 4 + 1, 1, words[i]);
         i++;
       }
       firstrun = 0;
     }
     delay(50);
   }
+
+  if (clock_mode != 4) {
+    //save the values to EEPROM
+    //##eeprom_save(201, clock_mode, 0, 0);
+    //Serial.println("clock_mode");
+  }
+  
 }
 
 
@@ -1514,8 +1791,12 @@ byte run_mode() {
       return 0;
     }
   }
+  if (!dst_mode) {
+    
+  }
   //else return 1 - keep running in this mode
   return 1;
+
 }
 
 
@@ -1543,25 +1824,17 @@ void set_next_random() {
 }
 
 
-
 //dislpay menu to change the clock settings
 void setup_menu() {
 
-  const char* set_modes[] = {
-    ">Rnd Clk", ">Rnd Fnt", ">24 Hr", ">Font", ">D/Time", ">Auto LX", ">Bright", ">Exit"}; 
-  if (ampm == 0) { 
-    set_modes[2] = (">12 Hr"); 
-  }
-
   byte setting_mode = 0;
-  byte next_setting_mode;
   byte firstrun = 1;
 
   //loop waiting for button (timeout after 35 loops to return to mode X)
-  for(int count=0; count < 35 ; count++) {
+  for (int count = 0; count < 35 ; count++) {
 
     //if user hits button, change the clock_mode
-    if(buttonA.uniquePress() || firstrun == 1){
+    if (buttonA.uniquePress() || firstrun == 1) {
 
       count = 0;
       cls();
@@ -1574,50 +1847,46 @@ void setup_menu() {
       }
 
       //print arrow and current clock_mode name on line one and print next clock_mode name on line two
-      char str_top[9];
-    
-      strcpy (str_top, set_modes[setting_mode]);
+      progmem_numbers(4, setting_mode);
 
-      next_setting_mode = setting_mode + 1;
-      if (next_setting_mode > NUM_SETTINGS_MODES) { 
-        next_setting_mode = 0; 
-      }
-      
       byte i = 0;
-      while(str_top[i]) {
-        puttinychar(i * 4 + 1, 1, str_top[i]);
+      while(words[i]) {
+        puttinychar(i * 4 + 1, 1, words[i]);
         i++;
       }
 
       firstrun = 0;
     }
-    delay(50); 
+    delay(50);
   }
   
   //pick the mode 
-  switch(setting_mode){
-    case 0: 
+  switch(setting_mode) {
+    case 0:
       set_random(); 
       break;
-    case 1: 
+    case 1:
       set_random_font(); 
       break;
-    case 2: 
-      set_ampm(); 
+    case 2:
+      set_ampm();
       break;
-    case 3: 
+    case 3:
       set_font();
       break;
     case 4:
-      set_time(); 
+      set_ntp_dst();
       break;
     case 5:
-      set_auto_intensity(); 
+      set_time(); 
       break;
     case 6:
+      set_auto_intensity(); 
+      break;
+    case 7:
       set_intensity(); 
       break;
-    case 7: 
+    case 8:
       //exit menu
       break;
   }
@@ -1632,36 +1901,22 @@ void set_random() {
   
   cls();
 
-  char text_a[4] = "Off";
-  char text_b[3] = "On";
-  byte i = 0;
+  //get current values
+  bool set_random_mode = eeprom_read_bool(206);
 
-  //if random mode is on, turn it off
-  if (random_mode) {
+  //Set function - we pass in: which 'set' message to show at top, current value
+  set_random_mode = set_bool_value(3, set_random_mode);
 
-    //turn random mode off
-    random_mode = 0;
+  //set the values
+  random_mode = set_random_mode;
 
-    //print a message on the display
-    while(text_a[i]) {
-      puttinychar(i * 4, 1, text_a[i]);
-      i++;
-    }
-  } else {
-    //turn randome mode on. 
-    random_mode = 1;
-    
-    //set hour mode will change
-    set_next_random();
+  //set hour mode will change
+  set_next_random();
   
-    //print a message on the display
-    while(text_b[i]) {
-      puttinychar(i * 4, 1, text_b[i]);
-      i++;
-    }  
-  } 
-  delay(1500); //leave the message up for a second or so
-  
+  //save the values to EEPROM
+  eeprom_save(206, 0, random_mode, 0);
+  //Serial.println("random_mode");
+
 }
 
 
@@ -1670,34 +1925,21 @@ void set_random_font() {
   
   cls();
   
-  char text_a[4] = "Off";
-  char text_b[3] = "On";
-  byte i = 0;
-  //if random font mode is on, turn it off
-  if (random_font_mode) {
+  //get current values
+  bool set_random_font_mode = eeprom_read_bool(207);
 
-    //turn random font mode off
-    random_font_mode = 0;
+  //Set function - we pass in: which 'set' message to show at top, current value
+  set_random_font_mode = set_bool_value(3, set_random_font_mode);
 
-    //print a message on the display
-    while(text_a[i]) {
-      puttinychar(i * 4, 1, text_a[i]);
-      i++;
-    }
-  } else {
-    //turn random font mode on. 
-    random_font_mode = 1;
-    
-    //set hour mode will change
-    set_next_random();
+  //set the values
+  random_font_mode = set_random_font_mode;
   
-    //print a message on the display
-    while(text_b[i]) {
-      puttinychar(i * 4, 1, text_b[i]);
-      i++;
-    }  
-  } 
-  delay(1500);
+  //set hour mode will change
+  set_next_random();
+
+  //save the values to EEPROM
+  eeprom_save(207, 0, random_font_mode, 0);
+  //Serial.println("random_font_mode");
   
 }
 
@@ -1705,9 +1947,21 @@ void set_random_font() {
 //set 12 or 24 hour clock
 void set_ampm() {
 
-  // AM/PM or 24 hour clock mode - flip the bit (makes 0 into 1, or 1 into 0 for ampm mode)
-  ampm = (ampm ^ 1);
   cls();
+
+  //get current values
+  bool set_ampm_mode = eeprom_read_bool(208);
+
+  //Set function - we pass in: which 'set' message to show at top, current value
+  set_ampm_mode = set_bool_value(2, set_ampm_mode);
+
+  //set the values
+  ampm = set_ampm_mode;
+
+  //save the values to EEPROM
+  eeprom_save(208, 0, set_ampm_mode, 0);
+  //Serial.println("ampm");
+
 }
 
 
@@ -1717,7 +1971,7 @@ void set_font() {
   cls();
 
   byte i = 0;
-  char text[10] = ">Set Fnt";
+  char text[9] = ">Set Fnt";
   while(text[i]) {
     puttinychar(i * 4, 1, text[i]);
     i++;
@@ -1735,16 +1989,18 @@ void set_font() {
   }
 
   get_font_value(set_font_value, 1, NUM_FONTS);
-  //set_font_value = get_font_value(set_font_value, 1, NUM_FONTS);
 
-  //set the font
-  //set_font_case(set_font_value);
+  //save the values to EEPROM
+  eeprom_save(203, font_style, 0, 0);
+  eeprom_save(204, font_offset, 0, 0);
+  eeprom_save(205, font_cols, 0, 0);
+  //Serial.println("font style, offset and cols");
 
 }
 
 
 //set font_style, font_offset & font_cols variables, used by set_font()
-int set_font_case(int value) {
+void set_font_case(int value) {
   
   switch(value) {
     case 1:
@@ -1783,8 +2039,9 @@ int set_font_case(int value) {
       font_cols = 6;
       break;
   }
-  //return value;
+
 }
+
 
 //get user values for setting font
 int get_font_value(int current_value, int min_value, int max_value) {
@@ -1823,7 +2080,7 @@ int get_font_value(int current_value, int min_value, int max_value) {
       delay(150);
     }
 
-    while (buttonC.isPressed()){
+    while (buttonC.isPressed()) {
 
       if(current_value > min_value) {
         current_value--;
@@ -1848,6 +2105,177 @@ int get_font_value(int current_value, int min_value, int max_value) {
 
   }
   //return current_value;
+
+}
+
+
+//set ntp and dst settings
+void set_ntp_dst() {
+
+  cls();
+
+  //get current values
+  bool set_dst_mode = eeprom_read_bool(210);
+  bool set_ntp_mode = eeprom_read_bool(211);
+  int8_t set_utc_offset = eeprom_read_int8_t(213);
+
+  //Set function - we pass in: which 'set' message to show at top, current value, reset value, and rollover limit.
+  set_dst_mode = set_bool_value(0, set_dst_mode);
+  set_ntp_mode = set_bool_value(1, set_ntp_mode);
+  set_utc_offset = set_ntp_dst_int8_t_value(set_utc_offset, -12, 12);
+
+  //set the values
+  dst_mode = set_dst_mode;
+  ntp_mode = set_ntp_mode;
+  utc_offset = set_utc_offset;
+  
+  //save the values to EEPROM
+  eeprom_save(210, 0, set_dst_mode, 0);
+  eeprom_save(211, 0, set_ntp_mode, 0);
+  eeprom_save(213, 0, 0, set_utc_offset);
+  //Serial.println(set_dst_mode);
+  //Serial.println(set_ntp_mode);
+  //Serial.println(set_utc_offset);
+  
+  //cls();
+
+}
+
+
+//used to set bool for DST, NTP, 12h, Random and Light
+//message = which 'set' message to print, 
+//current value = current value of property we are setting
+bool set_bool_value(byte message, bool current_value){
+
+  cls();
+  
+  progmem_numbers(5, message);
+
+  //Print "set xyz" top line
+  byte i = 0;
+  while(words[i])
+  {
+    puttinychar(i * 4, 1, words[i]);
+    i++;
+  }
+
+  delay(1500);
+  cls();
+
+  char text[2][5] = {">OFF", ">ON "};
+
+  //print current value
+  i = 0;
+  while(text[current_value][i]) {
+    puttinychar(i * 4, 1, text[current_value][i]);
+    i++;
+  }
+  delay(300);
+  //wait for button input
+  while (!buttonA.uniquePress()) {
+
+    while (buttonB.isPressed()) {
+
+      current_value = (current_value ^ 1);
+      
+      //print the new value
+      i = 0;
+      while(text[current_value][i]) {
+        puttinychar(i * 4, 1, text[current_value][i]);
+        i++;
+      }
+      delay(150);
+    }
+
+    while (buttonC.isPressed()) {
+
+      current_value = (current_value ^ 1);
+
+      //print the new value
+      i = 0;
+      while(text[current_value][i]) {
+        puttinychar(i * 4, 1, text[current_value][i]);
+        i++;
+      }
+      delay(150);
+    }
+    
+  }
+  return current_value;
+
+}
+
+
+//used to set int8_t number for UTC offset
+//current value = current value of property we are setting
+//reset_value = what to reset value to if to rolls over. E.g. hours roll from -12 to 12
+//rollover limit = when value rolls over
+int8_t set_ntp_dst_int8_t_value(int8_t current_value, int8_t reset_value, int8_t rollover_limit){
+
+  cls();
+  char messages[9] = {">Set UTC"};
+
+  //Print "set xyz" top line
+  byte i = 0;
+  while(messages[i])
+  {
+    puttinychar(i * 4, 1, messages[i]); 
+    i++;
+  }
+
+  delay(1500);
+  cls();
+
+  //print digits bottom line
+  char buffer[5] = "    ";
+  itoa(current_value,buffer,10);
+  puttinychar(0 , 1, '>');
+  puttinychar(4 , 1, buffer[0]);
+  puttinychar(8 , 1, buffer[1]);
+  puttinychar(12, 1, buffer[2]);
+  puttinychar(16, 1, buffer[3]);
+  delay(300);
+  //wait for button input
+  while (!buttonA.uniquePress()) {
+
+    while (buttonB.isPressed()) {
+
+      if(current_value < rollover_limit) {
+        current_value++;
+      }
+      else {
+        current_value = reset_value;
+      }
+      //print the new value
+      itoa(current_value, buffer ,10);
+      puttinychar(0 , 1, '>');
+      puttinychar(4 , 1, buffer[0]);
+      puttinychar(8 , 1, buffer[1]);
+      puttinychar(12, 1, buffer[2]);
+      puttinychar(16, 1, buffer[3]);
+      delay(150);
+    }
+
+    while (buttonC.isPressed()) {
+
+      if(current_value > reset_value) {
+        current_value--;
+      }
+      else {
+        current_value = rollover_limit;
+      }
+      //print the new value
+      itoa(current_value, buffer, 10);
+      puttinychar(0 , 1, '>');
+      puttinychar(4 , 1, buffer[0]);
+      puttinychar(8 , 1, buffer[1]);
+      puttinychar(12, 1, buffer[2]);
+      puttinychar(16, 1, buffer[3]);
+      delay(150);
+    }
+    
+  }
+  return current_value;
 }
 
 
@@ -1918,51 +2346,44 @@ void set_intensity() {
     }
 
   }
+
+  //save the values to EEPROM
+  eeprom_save(200, intensity, 0, 0);
+  //Serial.println("intensity");
+  
 }
 
 
+// menu for setting auto intensity settings
 void set_auto_intensity() {
 
   cls();
-  
-  char text_a[4] = "Off";
-  char text_b[3] = "On";
-  byte i = 0;
-  //if auto intensity is on, turn it off
-  if (auto_intensity) {
 
-    //turn auto intensity off
-    auto_intensity = false;
-    //revert to default intensity level
-    set_devices(true, intensity);
+  //get current values
+  bool set_auto_intensity_value = eeprom_read_bool(209);
 
-    //print a message on the display
-    while(text_a[i]) {
-      puttinychar(i * 4, 1, text_a[i]);
-      i++;
-    }
-  } else {
-    //turn auto intensity on. 
-    auto_intensity = true;
-  
-    //print a message on the display
-    while(text_b[i]) {
-      puttinychar(i * 4, 1, text_b[i]);
-      i++;
-    }  
-  } 
-  delay(1500);
+  //Set function - we pass in: which 'set' message to show at top, current value
+  set_auto_intensity_value = set_bool_value(4, set_auto_intensity_value);
+
+  //set the values
+  auto_intensity = set_auto_intensity_value;
+
+  //save the values to EEPROM
+  eeprom_save(209, 0, auto_intensity, 0);
+  //Serial.println("auto_intensity");
 
 }
 
 
 // display a horizontal bar on the screen at offset xposr by ypos with height and width of xbar, ybar
 void levelbar (byte xpos, byte ypos, byte xbar, byte ybar) {
+
   for (byte x = 0; x < xbar; x++) {
     for (byte y = 0; y <= ybar; y++) {
       plot(x + xpos, y + ypos, 1);
     }
   }
+
 }
 
 
@@ -1989,6 +2410,7 @@ void set_time() {
   ds3231.adjust(DateTime(set_yr, set_mnth, set_date, set_hr, set_min));
   
   cls();
+
 }
 
 
@@ -1997,17 +2419,17 @@ void set_time() {
 //current value = current value of property we are setting
 //reset_value = what to reset value to if to rolls over. E.g. mins roll from 60 to 0, months from 12 to 1
 //rollover limit = when value rolls over
-int set_value(byte message, int current_value, int reset_value, int rollover_limit){
+int set_value(byte message, int current_value, int reset_value, int rollover_limit) {
 
   cls();
-  char messages[6][17]   = {
-    ">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
 
   //Print "set xyz" top line
+  progmem_numbers(2, message);
+  
   byte i = 0;
-  while(messages[message][i])
+  while(words[i])
   {
-    puttinychar(i * 4, 1, messages[message][i]); 
+    puttinychar(i * 4, 1, words[i]);
     i++;
   }
 
@@ -2064,11 +2486,13 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
     
   }
   return current_value;
+
 }
 
 
-void get_time()
-{
+// finction to get time from DS3231
+void get_time() {
+
   //get time
   DateTime now = ds3231.now();
   //save time to array
@@ -2088,12 +2512,13 @@ void get_time()
   Serial.print(":");
   Serial.println(rtc[0]);
   */
+
 }
 
 
 //Routine to check light level and turn on/off matrix
-void light()
-{
+void light() {
+
   //Get light reading
   uint16_t lx = lux.GetLightIntensity();
 
@@ -2130,15 +2555,15 @@ void light()
   }
 
   if (display_mode == 2) {
-    shut = true;
+    shut = 1;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies only when 4th button is used to turn it always off
   }
   else if (lx == 0 && !shut && !dont_turn_off && (display_mode == 0 || display_mode > 2)) {
-    shut = true;
+    shut = 1;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough and 4th button option is normal
   }
   else if (lx > 0 && shut && display_mode != 2) {
-    shut = false;
+    shut = 0;
     set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
   }
 
@@ -2203,13 +2628,15 @@ void light()
 
 
 //Routine called by light() to turn on/off matrix and by auto light intensity to adjust device intensity. bool m = true (light intensity), false (matrix on/off), byte i = intensity
-void set_devices(bool m, byte i)
-{
+void set_devices(bool m, byte i) {
 
   int devices = lc.getDeviceCount();
   for (int address = 0; address < devices; address++) {
     if (!m) {
       //turns on/off matrix
+      if (display_mode == 2) {
+        delay(2000);
+      }
       lc.shutdown(address, shut);
     }
     else {
@@ -2226,19 +2653,17 @@ void display_options() {
 
   cls();
 
-  char options[6][9] = {
-    "Disp Nrm", "Disp On", "Disp Off", "9.00 pm", "10.00 pm", "11.00 pm"
-  };
-
   display_mode++;
   if (display_mode == 6) {
     display_mode = 0;
   }
 
+  progmem_numbers(6, display_mode);
+
   byte i = 0;
-  while(options[display_mode][i])
+  while(words[i])
   {
-    puttinychar(i * 4, 1, options[display_mode][i]); 
+    puttinychar(i * 4, 1, words[i]);
     i++;
   }
 
@@ -2265,65 +2690,75 @@ void display_options() {
   
   delay(1000);
 
+  //save the values to EEPROM
+  eeprom_save(202, display_mode, 0, 0);
+  //Serial.println("display_mode");
+
 }
 
-void ESPNTP() {
 
-  char buffer[80];
-  char unixString[11];
-  bool timeSync = false;
+//function for setting NTP time via ESP01 and calculating DST
+void ntp() {
 
-  //trigger ESP01 via software serial to receive NTP time
-  esp.println("NTP");
+  if (ntp_mode) {
+    char buffer[60];
+    char unixString[11];
+    bool timeSync = 0;
 
-  //set time using ESP01 NTP
-  cls();
-  char msg[8] = "GET NTP";
-  int i = 0;
-  while(msg[i])
-  {
-    puttinychar(i * 4 + 2, 1, msg[i]);
-    i++;
-  }
+    //trigger ESP01 via software serial to receive NTP time
+    esp.println("NTP");
 
-  while (!timeSync) {
-    if (readline(esp.read(), buffer, 80) > 0) {
-      Serial.println(buffer); //used for debugging output from ESP01
-      if ((buffer[0] == 'U') && (buffer[1] == 'N') && (buffer[2] == 'I') && (buffer[3] == 'X')) {
-        // if data sent is the UNIX token, take it
-        int i = 0;
-        while (i < 10) {
-          unixString[i] = buffer[i + 4];
-          i++;
-        }
-        unixString[10] = '\0';
+    //set time using ESP01 NTP
+    cls();
+    char msg[9] = ">GET NTP";
+    int i = 0;
+    while(msg[i])
+    {
+      puttinychar(i * 4, 1, msg[i]);
+      i++;
+    }
 
-        //Serial.print(unixString);
+    while (!timeSync) {
+      if (readline(esp.read(), buffer, 80) > 0) {
+        Serial.println(buffer); //used for debugging output from ESP01
+        if ((buffer[0] == 'U') && (buffer[1] == 'N') && (buffer[2] == 'I') && (buffer[3] == 'X')) {
+          // if data sent is the UNIX token, take it
+          int i = 0;
+          while (i < 10) {
+            unixString[i] = buffer[i + 4];
+            i++;
+          }
+          unixString[10] = '\0';
 
-        ds3231.adjust(DateTime(atol(unixString) + ntp_offset));
-        checkDST();
-        if (DST == 1) {
-          DateTime now = ds3231.now();
-          ds3231.adjust(DateTime(now.unixtime() + (3600 * utc_offset)));
-        }
+          //Serial.print(unixString);
+
+          ds3231.adjust(DateTime(atol(unixString) + ntp_adjust + (3600 * utc_offset)));
+
+          //calculate dst(), tell it the request came from ntp()
+          dst(1);
       
-        timeSync = true;
+          timeSync = 1;
 
-        //set time using ESP01 NTP - success
-        fade_down();
-        char msg[7] = "NTP OK";
-        i = 0;
-        while(msg[i]) {
-          puttinychar(i * 4 + 4, 1, msg[i]);
-          i++;
+          //set time using ESP01 NTP - success
+          fade_down();
+          char msg[8] = ">NTP OK";
+          i = 0;
+          while(msg[i]) {
+            puttinychar(i * 4, 1, msg[i]);
+            i++;
+          }
+          delay(1000);
+          fade_down();
         }
-        delay(1000);
-        fade_down();
       }
     }
   }
+  else if (dst_mode) {
+    
+  }
 
 }
+
 
 //used to readline from serial output
 int readline(int readch, char *buffer, int len) {
@@ -2350,9 +2785,11 @@ int readline(int readch, char *buffer, int len) {
 
 }
 
-//calculates DST, applicable if DST_mode = 1
-void checkDST() {
 
+//calculates DST, applicable if DST_mode = 1, takes NTP output (if applicable) into consideration
+void dst(bool ntp) {
+
+  //if dst_mode is true
   if (dst_mode) {
     get_time();
     byte day = rtc[4];
@@ -2362,11 +2799,37 @@ void checkDST() {
     byte minute = rtc[1];
     byte dow = rtc[3];
 
+    //temporarily store DST changes
+    bool dst_plus = 0;
+    bool dst_minus = 0;
+
+    //winter calculation
     if ((month < 3 || month > 10) || (month == 3 && day < 25) || (month == 10 && day >= 25 && hour == 2 && dow == 0) && DST == 1) {
       DST = 0; //winter is coming
+      dst_minus = 1;
+      //save to EEPROM
+      eeprom_save(212, 0, DST, 0);
+      //Serial.println("winter");
     }
+    //summer calculation
     else if ((month > 3 && month < 10) || (month == 10 && day < 25) || (month == 3 && day >= 25 && hour == 1 && dow == 0) && DST == 0) {
       DST = 1; //hosepipe ban is coming
+      dst_plus = 1;
+      //save to EEPROM
+      eeprom_save(212, 0, DST, 0);
+      //Serial.println("summer");
+    }
+    //+1 hour if run from NTP routine and summertime, or one time calculation is active and not run from NTP
+    if ((ntp && DST) || (!ntp && dst_plus)) {
+      DateTime now = ds3231.now();
+      ds3231.adjust(DateTime(now.unixtime() + (3600)));
+      //Serial.println("summer+1");
+    }
+    //-1 hour if not run from NTP routine and wintertime, based on one time calculation
+    if (!ntp && dst_minus) {
+      DateTime now = ds3231.now();
+      ds3231.adjust(DateTime(now.unixtime() - (3600)));
+      //Serial.println("winter-1");
     }
   }
 
