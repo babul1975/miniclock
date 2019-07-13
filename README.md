@@ -4,7 +4,8 @@ Video Here > https://youtu.be/CpQsMjI3FL0
 Arduino based mini LED matrix clock, with BME280 Sensor and BH1750 Light Sensor.
 Optional code for ESP01 to set time via NTP.
 
-Complete (28 Jun 2019), unless bugs found.
+Complete LEDClock32x8.ino v1.1 (28 Jun 2019), unless bugs found.
+Compltet LEDClock32x8_ESP01-NTP.ino v1.2 (13 Jul 2019), unless bugs found.
 ESP01 code more or less complete, just need to tidy up.
 
 # This now saves settings to EEPROM, my code has been optimised to only update if necessary. USE AT YOUR OWN RISK.
