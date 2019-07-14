@@ -6,19 +6,18 @@ Distributed under the terms of the GPL.
 For help on how to build the clock see my blog:
 http://123led.wordpress.com/
 
-Tested on IDE v1.6.5
-
 =======================================================================
 
-Modified by Ratti3 - 13 Jul 2019
+Modified by Ratti3 - 14 Jul 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-28,700 bytes 93%
-946 bytes 46%
+29,054 bytes 94%
+965 bytes 47%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
+https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh1750-and-esp01-fdde2b
 
 ***********************************************************************/
 
@@ -58,12 +57,13 @@ byte hour_off_3 = 23;
 byte font_style = 2;                     // [203] Default clock large font style
 byte font_offset = 1;                    // [204] Default clock large font offset adjustment
 byte font_cols = 6;                      // [205] Default clock large font columns adjustment
-  // DST UTC settings
+  // DST NTP and UTC settings
 bool dst_mode = 1;                       // [210] Enable DST function, 1 = enable, 0 = disable
-  // NTP Settings
 bool ntp_mode = 1;                       // [211] Enable NTP function, 1 = enable, 0 = disable
 byte ntp_adjust = 1;                     // Number of seconds to adjust NTP value before applying to DS3231, takes a few hundred milliseconds to process the ESP01 data
 int8_t utc_offset = 0;                   // [213] UTC offset adjustment, hours
+byte ntp_max_retry = 3;                  // Number of time to retry NTP request 1 = 35 seconds(ish) in total, values 1 - 9
+byte ntp_dst_hour = 2;                   // The hour daily NTP/DST sync happens, should be left at 2 if using DST mode
 
 //global variables
 bool shut = 0;                           // Stores matrix on/off state
@@ -75,6 +75,7 @@ int light_count = 0;                     // Counter for light routine
 byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor, this value is set automatically
 char words[1];                           // Holds word clock words, retrieved from progmem
 bool DST = 0;                            // [212] Holds DST applied value, 1 = summertime +1hr applied, this ensure DST +1/-1 runs only once
+bool dst_ntp_run = 0;                    // Holds the value to see if ntp() and dst() have run once a day
 byte FirstRunValue = 128;                // The check digits to see if EEPROM has values saved, change this [1-254] if you want to reset EEPROM to default values
 byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValue is saved
 
@@ -345,12 +346,13 @@ void setup() {
   if (ntp_mode) {
     ntp();
   }
+  //run dst() calculation, 0 means not triggered by ntp()
   if (!ntp_mode && dst_mode) {
-    //run dst() calculation, 0 means not triggered by ntp()
     dst(0);
   }
 
 }
+
 
 void loop() {
 
@@ -369,6 +371,9 @@ void loop() {
     word_clock();
     break;
   case 4:
+    ntp();
+    break;
+  case 5:
     setup_menu();
     break;
   }
@@ -1752,7 +1757,7 @@ void switch_mode() {
       if (firstrun == 0) {
         clock_mode++;
       }
-      if (clock_mode > NUM_DISPLAY_MODES + 1) {
+      if (clock_mode > NUM_DISPLAY_MODES + 2) {
         clock_mode = 0;
       }
 
@@ -1769,10 +1774,10 @@ void switch_mode() {
     delay(50);
   }
 
-  if (clock_mode != 4) {
+  if (clock_mode < 4) {
     //save the values to EEPROM
-    //##eeprom_save(201, clock_mode, 0, 0);
-    //Serial.println("clock_mode");
+    eeprom_save(201, clock_mode, 0, 0);
+    //Serial.println(clock_mode);
   }
   
 }
@@ -1791,8 +1796,19 @@ byte run_mode() {
       return 0;
     }
   }
-  if (!dst_mode) {
-    
+  //get time from NTP server if ntp_mode = 1
+  if (ntp_mode && rtc[2] == ntp_dst_hour && !dst_ntp_run) {
+    ntp();
+    dst_ntp_run = 1;
+  }
+  //run dst() calculation, 0 means not triggered by ntp()
+  if (!ntp_mode && dst_mode && rtc[2] == ntp_dst_hour && !dst_ntp_run) {
+    dst(0);
+    dst_ntp_run = 1;
+  }
+  //reset once a day dst/ntp check so it runs next day
+  if (rtc[2] > ntp_dst_hour) {
+    dst_ntp_run = 0;
   }
   //else return 1 - keep running in this mode
   return 1;
@@ -1803,13 +1819,13 @@ byte run_mode() {
 //set the next hour the clock will change mode when random mode is on, also does the random font mode
 void set_next_random() {
 
-  //set the next hour the clock mode will change - current time plus 1// - 4 hours
+  //set the next hour the clock mode will change - current time plus 1
   get_time();
-  change_mode_time = rtc[2] + 1;//random(1, 5);
+  change_mode_time = rtc[2] + 1;
 
-  //if change_mode_time now happens to be over 23, then set it to between 1 and 3am
+  //if change_mode_time now happens to be over 23, then set it 12am
   if (change_mode_time > 23) {
-    change_mode_time = 0;//random(1, 4);
+    change_mode_time = 0;
   }
 
   if (random_mode) {
@@ -1893,6 +1909,7 @@ void setup_menu() {
     
   //change the clock from mode 6 (settings) back to the one it was in before 
   clock_mode = old_mode;
+
 }
 
 
@@ -2700,62 +2717,112 @@ void display_options() {
 //function for setting NTP time via ESP01 and calculating DST
 void ntp() {
 
-  if (ntp_mode) {
-    char buffer[60];
-    char unixString[11];
-    bool timeSync = 0;
+  char buffer[50];
+  char unixString[11];
+  bool timeSync = 0;
+  byte wait = 0;
 
-    //trigger ESP01 via software serial to receive NTP time
-    esp.println("NTP");
+  //trigger ESP01 via software serial to receive NTP time
+  esp.print("NTP");
+  esp.println(ntp_max_retry);
+  //send empty line to prevent premature wakeup
+  esp.println(" ");
 
-    //set time using ESP01 NTP
-    cls();
-    char msg[9] = ">GET NTP";
-    int i = 0;
-    while(msg[i])
-    {
-      puttinychar(i * 4, 1, msg[i]);
-      i++;
-    }
+  //set time using ESP01 NTP
+  cls();
+  char msg[9] = ">GET NTP";
+  int i = 0;
+  while(msg[i])
+  {
+    puttinychar(i * 4, 1, msg[i]);
+    i++;
+  }
 
-    while (!timeSync) {
-      if (readline(esp.read(), buffer, 80) > 0) {
-        Serial.println(buffer); //used for debugging output from ESP01
-        if ((buffer[0] == 'U') && (buffer[1] == 'N') && (buffer[2] == 'I') && (buffer[3] == 'X')) {
-          // if data sent is the UNIX token, take it
-          int i = 0;
-          while (i < 10) {
-            unixString[i] = buffer[i + 4];
-            i++;
-          }
-          unixString[10] = '\0';
-
-          //Serial.print(unixString);
-
-          ds3231.adjust(DateTime(atol(unixString) + ntp_adjust + (3600 * utc_offset)));
-
-          //calculate dst(), tell it the request came from ntp()
-          dst(1);
-      
-          timeSync = 1;
-
-          //set time using ESP01 NTP - success
-          fade_down();
-          char msg[8] = ">NTP OK";
-          i = 0;
-          while(msg[i]) {
-            puttinychar(i * 4, 1, msg[i]);
-            i++;
-          }
-          delay(1000);
-          fade_down();
+  //holds count to quit routine if no data received from ESP01
+  int ntp_count = 1;
+  
+  while (!timeSync) {
+    if (readline(esp.read(), buffer, 50) > 0) {
+      Serial.println(buffer); //used for debugging output from ESP01
+      if (buffer[0] == 'U' && buffer[1] == 'N' && buffer[2] == 'I' && buffer[3] == 'X' && !wait) {
+        // if data sent is the UNIX token, take it
+        int i = 0;
+        while (i < 10) {
+          unixString[i] = buffer[i + 4];
+          i++;
         }
+        unixString[10] = '\0';
+
+        ds3231.adjust(DateTime(atol(unixString) + ntp_adjust + (3600 * utc_offset)));
+
+        //calculate dst(), tell it the request came from ntp()
+        if (dst_mode) {
+          dst(1);
+        }
+      
+        wait++;
+
+        //set time using ESP01 NTP - success
+        fade_down();
+        char msg[8] = ">NTP OK";
+        i = 0;
+        while(msg[i]) {
+          puttinychar(i * 4, 1, msg[i]);
+          i++;
+        }
+        delay(1000);
+        fade_down();
+      }
+      else if (wait == 1) {
+        wait++;
+      }
+      else if (wait == 2) {
+        timeSync = 1;
+      }
+      // NTP sending failed
+      else if (buffer[4] == 'F' && buffer[5] == 'a' && buffer[6] == 'i' && buffer[7] == 'l') {
+        char msg[9] = ">NTP ERR";
+        i = 0;
+        while(msg[i]) {
+          puttinychar(i * 4, 1, msg[i]);
+          i++;
+        }
+        delay(1000);
+        fade_down();
+        timeSync = 1;
+      }
+      // WiFi connection failed
+      else if (buffer[5] == 'F' && buffer[6] == 'a' && buffer[7] == 'i' && buffer[8] == 'l') {
+        char msg[9] = ">WIFI ER";
+        i = 0;
+        while(msg[i]) {
+          puttinychar(i * 4, 1, msg[i]);
+          i++;
+        }
+        delay(1000);
+        fade_down();
+        timeSync = 1;
       }
     }
+
+    delay(1);
+    ntp_count++;
+    //quit ntp routine if nothing comes from the ESP, the calculation below ensures it does not quit before ESP01 processing
+    if (ntp_count > (ntp_max_retry * 36000)) {
+      char msg[9] = ">NO WIFI";
+      i = 0;
+      while(msg[i]) {
+        puttinychar(i * 4, 1, msg[i]);
+        i++;
+      }
+      delay(1000);
+      fade_down();
+      timeSync = 1;
+    }
+  
   }
-  else if (dst_mode) {
-    
-  }
+
+  clock_mode = old_mode;
 
 }
 
@@ -2786,51 +2853,48 @@ int readline(int readch, char *buffer, int len) {
 }
 
 
-//calculates DST, applicable if DST_mode = 1, takes NTP output (if applicable) into consideration
+//calculates DST, takes NTP output (bool ntp - if applicable) into consideration
 void dst(bool ntp) {
 
-  //if dst_mode is true
-  if (dst_mode) {
-    get_time();
-    byte day = rtc[4];
-    byte month = rtc[5];
-    int year = rtc[6];
-    byte hour = rtc[2];
-    byte minute = rtc[1];
-    byte dow = rtc[3];
+  get_time();
+  byte day = rtc[4];
+  byte month = rtc[5];
+  int year = rtc[6];
+  byte hour = rtc[2];
+  byte minute = rtc[1];
+  byte dow = rtc[3];
 
-    //temporarily store DST changes
-    bool dst_plus = 0;
-    bool dst_minus = 0;
+  //temporarily store DST changes
+  bool dst_plus = 0;
+  bool dst_minus = 0;
 
-    //winter calculation
-    if ((month < 3 || month > 10) || (month == 3 && day < 25) || (month == 10 && day >= 25 && hour == 2 && dow == 0) && DST == 1) {
-      DST = 0; //winter is coming
-      dst_minus = 1;
-      //save to EEPROM
-      eeprom_save(212, 0, DST, 0);
-      //Serial.println("winter");
-    }
-    //summer calculation
-    else if ((month > 3 && month < 10) || (month == 10 && day < 25) || (month == 3 && day >= 25 && hour == 1 && dow == 0) && DST == 0) {
-      DST = 1; //hosepipe ban is coming
-      dst_plus = 1;
-      //save to EEPROM
-      eeprom_save(212, 0, DST, 0);
-      //Serial.println("summer");
-    }
-    //+1 hour if run from NTP routine and summertime, or one time calculation is active and not run from NTP
-    if ((ntp && DST) || (!ntp && dst_plus)) {
-      DateTime now = ds3231.now();
-      ds3231.adjust(DateTime(now.unixtime() + (3600)));
-      //Serial.println("summer+1");
-    }
-    //-1 hour if not run from NTP routine and wintertime, based on one time calculation
-    if (!ntp && dst_minus) {
-      DateTime now = ds3231.now();
-      ds3231.adjust(DateTime(now.unixtime() - (3600)));
-      //Serial.println("winter-1");
-    }
+  //winter calculation
+  if ((month < 3 || month > 10) || (month == 3 && day < 25) || (month == 10 && day >= 25 && hour == 2 && dow == 0) && DST == 1) {
+    DST = 0; //winter is coming
+    dst_minus = 1;
+    //save to EEPROM
+    eeprom_save(212, 0, DST, 0);
+    //Serial.println("winter");
+  }
+  //summer calculation
+  else if ((month > 3 && month < 10) || (month == 10 && day < 25) || (month == 3 && day >= 25 && hour == 1 && dow == 0) && DST == 0) {
+    DST = 1; //hosepipe ban is coming
+    dst_plus = 1;
+    //save to EEPROM
+    eeprom_save(212, 0, DST, 0);
+    //Serial.println("summer");
+  }
+  //+1 hour if run from NTP routine and summertime, or one time calculation is active and not run from NTP
+  if ((ntp && DST) || (!ntp && dst_plus)) {
+    DateTime now = ds3231.now();
+    ds3231.adjust(DateTime(now.unixtime() + (3600)));
+    //Serial.println("summer+1");
+  }
+  //-1 hour if not run from NTP routine and wintertime, based on one time calculation
+  if (!ntp && dst_minus) {
+    DateTime now = ds3231.now();
+    ds3231.adjust(DateTime(now.unixtime() - (3600)));
+    //Serial.println("winter-1");
   }
 
 }

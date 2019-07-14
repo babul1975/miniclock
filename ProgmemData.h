@@ -64,9 +64,10 @@ const char mm_0[] PROGMEM = ">Basic";
 const char mm_1[] PROGMEM = ">Small";
 const char mm_2[] PROGMEM = ">Slide";
 const char mm_3[] PROGMEM = ">Words";
-const char mm_4[] PROGMEM = ">Setup";
+const char mm_4[] PROGMEM = ">NTP";
+const char mm_5[] PROGMEM = ">Setup";
 
-const char *const mainmenu[] PROGMEM = {mm_0, mm_1, mm_2, mm_3, mm_4};
+const char *const mainmenu[] PROGMEM = {mm_0, mm_1, mm_2, mm_3, mm_4, mm_5};
 
 // Clock Set menu
 const char c_0[] PROGMEM = ">Set Min";
