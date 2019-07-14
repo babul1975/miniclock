@@ -12,7 +12,7 @@ Modified by Ratti3 - 14 Jul 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-29,054 bytes 94%
+29,058 bytes 94%
 965 bytes 47%
 
 https://github.com/Ratti3/miniclock
@@ -184,6 +184,7 @@ void setup() {
       else if (i == 201) {
         if (FR) {
           clock_mode = value1;
+          old_mode = clock_mode;
         }
         else {
           value1 = clock_mode;
