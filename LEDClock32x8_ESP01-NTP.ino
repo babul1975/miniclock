@@ -12,8 +12,8 @@ Modified by Ratti3 - 14 Jul 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-29,058 bytes 94%
-965 bytes 47%
+29,068 bytes 94%
+1,075 bytes 52%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -1529,11 +1529,11 @@ void word_clock() {
     }
   }
   fade_down();
+
 }
 
 
-//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens, 2 = clockset, 3 = mainmenu, 4 = setupmenu
-//5 = boolmenu, 6 - displayoptions, 7 = suffix. i = index
+//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens, 2 = clockset. i = index
 char progmem_numbers(byte m, byte i) {
 
   if (m == 0) {
@@ -1545,20 +1545,18 @@ char progmem_numbers(byte m, byte i) {
   else if (m == 2) {
     strcpy_P(words, (char *)pgm_read_word(&(clockset[i])));
   }
-  else if (m == 3) {
+
+}
+
+
+//used by menu routines to retrieve words from progmem, m : 0 = mainmenu, 1 = setupmenu. i = index
+char progmem_menus(byte m, byte i) {
+
+  if (m == 0) {
     strcpy_P(words, (char *)pgm_read_word(&(mainmenu[i])));
   }
-  else if (m == 4) {
+  else if (m == 1) {
     strcpy_P(words, (char *)pgm_read_word(&(setupmenu[i])));
-  }
-  else if (m == 5) {
-    strcpy_P(words, (char *)pgm_read_word(&(boolmenu[i])));
-  }
-  else if (m == 6) {
-    strcpy_P(words, (char *)pgm_read_word(&(displayoptions[i])));
-  }
-  else if (m == 7) {
-    strcpy_P(words, (char *)pgm_read_word(&(suffix[i])));
   }
 
 }
@@ -1645,8 +1643,11 @@ void display_thp()
 void display_date() {
 
   cls();
-  //read the date from the DS3231
 
+  //date suffix array
+  char suffix[4][3] = {"st", "nd", "rd", "th"};
+
+  //read the date from the DS3231
   byte dow = rtc[3]; // day of week 0 = Sunday
   byte date = rtc[4];
   byte month = rtc[5] - 1;
@@ -1678,8 +1679,6 @@ void display_date() {
   itoa(date, buffer, 10);
   offset = 10; //offset to centre text if 3 chars - e.g. 3rd
   
-  // first work out date 2 letter suffix - eg st, nd, rd, th etc
-  // char suffix[4][3]={"st", "nd", "rd", "th"  }; is defined at top of code
   byte s = 3; 
   if(date == 1 || date == 21 || date == 31) {
     s = 0;
@@ -1705,9 +1704,8 @@ void display_date() {
   }
 
   //print the 2 suffix characters
-  progmem_numbers(7, s);
-  puttinychar(suffixposx + offset, 1, words[0]);
-  puttinychar(suffixposx + 4 + offset, 1, words[1]);
+  puttinychar(suffixposx + offset, 1, suffix[s][0]); 
+  puttinychar(suffixposx + 4 + offset, 1, suffix[s][1]); 
  
   delay(1000);
   fade_down();
@@ -1763,7 +1761,7 @@ void switch_mode() {
       }
 
       //print arrow and current clock_mode name on line one and print next clock_mode name on line two
-      progmem_numbers(3, clock_mode);
+      progmem_menus(0, clock_mode);
 
       byte i = 0;
       while (words[i]) {
@@ -1864,7 +1862,7 @@ void setup_menu() {
       }
 
       //print arrow and current clock_mode name on line one and print next clock_mode name on line two
-      progmem_numbers(4, setting_mode);
+      progmem_menus(1, setting_mode);
 
       byte i = 0;
       while(words[i]) {
@@ -2166,14 +2164,14 @@ void set_ntp_dst() {
 bool set_bool_value(byte message, bool current_value){
 
   cls();
-  
-  progmem_numbers(5, message);
+
+  char options[5][9] = {">Set DST", ">Set NTP", ">Set 12h", ">Set Rnd", ">Set LX"};
 
   //Print "set xyz" top line
   byte i = 0;
-  while(words[i])
+  while(options[message][i])
   {
-    puttinychar(i * 4, 1, words[i]);
+    puttinychar(i * 4, 1, options[message][i]);
     i++;
   }
 
@@ -2671,17 +2669,19 @@ void display_options() {
 
   cls();
 
+  char options[6][9] = {
+    ">Normal", ">On", ">Off", "> 9.00pm", ">10.00 pm", ">11.00 pm"
+  };
+
   display_mode++;
   if (display_mode == 6) {
     display_mode = 0;
   }
 
-  progmem_numbers(6, display_mode);
-
   byte i = 0;
-  while(words[i])
+  while(options[display_mode][i])
   {
-    puttinychar(i * 4, 1, words[i]);
+    puttinychar(i * 4, 1, options[display_mode][i]); 
     i++;
   }
 

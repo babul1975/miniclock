@@ -90,30 +90,3 @@ const char s_7[] PROGMEM = ">Bright";
 const char s_8[] PROGMEM = ">Exit";
 
 const char *const setupmenu[] PROGMEM = {s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8};
-
-// Bool menu
-const char b_0[] PROGMEM = ">Set DST";
-const char b_1[] PROGMEM = ">Set NTP";
-const char b_2[] PROGMEM = ">Set 12h";
-const char b_3[] PROGMEM = ">Set Rnd";
-const char b_4[] PROGMEM = ">Set LX";
-
-const char *const boolmenu[] PROGMEM = {b_0, b_1, b_2, b_3, b_4};
-
-// Display Options
-const char o_0[] PROGMEM = ">Normal";
-const char o_1[] PROGMEM = ">On";
-const char o_2[] PROGMEM = ">Off";
-const char o_3[] PROGMEM = "> 9.00pm";
-const char o_4[] PROGMEM = ">10.00pm";
-const char o_5[] PROGMEM = ">11.00pm";
-
-const char *const displayoptions[] PROGMEM = {o_0, o_1, o_2, o_3, o_4, o_5};
-
-// Date suffix
-const char ds_0[] PROGMEM = "st";
-const char ds_1[] PROGMEM = "nd";
-const char ds_2[] PROGMEM = "rd";
-const char ds_3[] PROGMEM = "th";
-
-const char *const suffix[] PROGMEM = {ds_0, ds_1, ds_2, ds_3};
