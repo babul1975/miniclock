@@ -1,45 +1,84 @@
+/***********************************************************************
+
+Mini Clock ESP01 code by Ratti3 - 14 Jul 2019
+Distributed under the terms of the GPL.
+Tested on IDE v1.8.9
+
+268,480 bytes 53%
+27,112 bytes 33%
+
+https://github.com/Ratti3/miniclock
+https://youtu.be/CpQsMjI3FL0
+https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh1750-and-esp01-fdde2b
+
+***********************************************************************/
+
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
+// Required for wifi_station_connect() to work
 extern "C" {
-  #include "user_interface.h"  // Required for wifi_station_connect() to work
+  #include "user_interface.h"
 }
 
 #define FPM_SLEEP_MAX_TIME 0xFFFFFFF
 
-char ssid[] = "ssid";        // your network SSID (name)
-char pass[] = "pw";          // your network password
+char ssid[] = "SSID";        // your network SSID (name)
+char pass[] = "PASSWORD";         // your network password
 
-unsigned int localPort = 2390; // local port to listen for UDP packets
-IPAddress timeServerIP;
-const char* ntpServerName = "pool.ntp.org";
-const int NTP_PACKET_SIZE = 48;
+const char* ntpServerName = "pool.ntp.org"; // the NTP pool to query
+byte try_count = 15;                        // number of packet send attempts, 1 try_count = 2 seconds
+
+unsigned int localPort = 2390;              // local port to listen for UDP packets
+IPAddress timeServerIP;                     // stores the IP address of the time server
+const int NTP_PACKET_SIZE = 48;             
 byte packetBuffer[NTP_PACKET_SIZE];
-int cb;
-byte count;
 
-byte try_count = 15; // 1 count = 2 seconds
-char buffer[80];
-char Trigger[4];
+int cb;              // holds parsed NTP packet                              
+byte count;          // counter for retrying packets
+byte retry_count;    // holds the total attempts so far
+byte retry_max;      // number of total attempts (retry_count * try_count), this value is obtained from the Arduino
+char buf[1];         // hold the retry_max from the Arduino, so it can be converted
+char buffer[20];     // holds the data received on software serial
 
-WiFiUDP udp;
+WiFiUDP udp;         // WiFi UDP library
+
 
 void setup() {
 
   Serial.begin(9600);  // max speed as using softwareserial on Arduino
 
+  // Begin UDP library
   udp.begin(localPort);
 
 }
 
+
 void loop() {
 
-  if (readline(Serial.read(), buffer, 80) > 0) {
+  // Read the software serial and look for NTP string received from the Arduino
+  // The number after
+  if (readline(Serial.read(), buffer, 20) > 0) {
     if ((buffer[0] == 'N') && (buffer[1] == 'T') && (buffer[2] == 'P')) {
-      Serial.println("NTP request received from Arduino");
-      WiFiOn();
-      GetNTPTime();
-      WiFiOff();
+      retry_count = 1;
+      buf[0] = buffer[3];
+      retry_max = atoi(buf);
+      Serial.println("ESP01 Says: NTP request received from Arduino");
+      while (retry_count <= retry_max) {
+        Serial.print("[attempt ");
+        Serial.print(retry_count);
+        Serial.print(" of ");
+        Serial.print(retry_max);
+        Serial.println("]");
+        WiFiOn();
+        GetNTPTime();
+        WiFiOff();
+        retry_count++;
+        if (cb) break;
+        if (retry_count > retry_max) {
+          Serial.println("NTP Fail");
+        }
+      }
     }
   }
   delay(1000);
@@ -48,7 +87,7 @@ void loop() {
 
 void GetNTPTime() {
   
-  WiFi.hostByName(ntpServerName, timeServerIP); 
+  WiFi.hostByName(ntpServerName, timeServerIP);
 
   count = 1;
   sendNTPpacket(timeServerIP);
@@ -56,8 +95,7 @@ void GetNTPTime() {
   cb = udp.parsePacket();
   int i = 0;
   while (!cb) {
-    if (count > try_count) {
-      Serial.println("Failed");
+    if (count >= try_count) {
       break;
     }
     if (i == 400) { //resend NTP packet every 2 seconds
@@ -104,11 +142,14 @@ void WiFiOff() {
   wifi_fpm_open();
   wifi_fpm_do_sleep(FPM_SLEEP_MAX_TIME);
   Serial.println("..ok");
+  Serial.println(" ");
+  delay(5000);
 
 }
 
 void wifi_connect() {
 
+  count = 1;
   Serial.println();
   // attempt to connect to Wifi network:
   WiFi.begin(ssid, pass);
@@ -118,7 +159,10 @@ void wifi_connect() {
   while (WiFi.status() != WL_CONNECTED) {
     WiFi.mode(WIFI_STA);
     delay(500);
-    // add counter here ######################
+    count++;
+    if (count > 15) {
+      Serial.println("WiFi Fail");
+    }
   }
   Serial.println("..connected");
   printWifiStatus();
@@ -148,8 +192,10 @@ unsigned long sendNTPpacket(IPAddress& address) {
   
   Serial.print("Sending NTP packet to: ");
   Serial.print(address);
-  Serial.print(" [attempt ");
+  Serial.print(" [");
   Serial.print(count);
+  Serial.print(" of ");
+  Serial.print(try_count);
   Serial.println("]");
   memset(packetBuffer, 0, NTP_PACKET_SIZE);
   packetBuffer[0] = 0b11100011; // LI, Version, Mode
