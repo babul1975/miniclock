@@ -39,6 +39,10 @@ ESP01 (optional):
   D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+15 Jul 2019 - Changes:
+
+       # Fixed issue, PROGMEM running slow due to too much data, moved some out of PROGMEM.
+       
 14 Jul 2019 - Changes:
 
        # Added option to quit NTP routine when no data received
@@ -49,7 +53,7 @@ ESP01 (optional):
 13 Jul 2019 - Changes:
 
        # Substantial amount of changes to LEDClock32x8_ESP01-NTP.ino:
-       # Fixed variious issues with the original code
+       # Fixed various issues with the original code
        # Menus updated and added. DST and NTP finalised but not tested. UTC offset option in menu
        # Settings are now saved in EEPROM
 
