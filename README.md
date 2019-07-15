@@ -44,6 +44,8 @@ ESP01 (optional):
 15 Jul 2019 - Changes:
 
        # Fixed issue, PROGMEM running slow due to too much data, moved some out of PROGMEM.
+       # Fixed ESP01 timeout handling issue, moved more data out of PROGMEM
+       # Increased Serial Software read buffer
        
 14 Jul 2019 - Changes:
 
