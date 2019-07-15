@@ -77,16 +77,3 @@ const char c_3[] PROGMEM = ">Set Mth";
 const char c_4[] PROGMEM = ">Set Yr";
 
 const char *const clockset[] PROGMEM = {c_0, c_1, c_2, c_3, c_4};
-
-// Setup menu
-const char s_0[] PROGMEM = ">Rnd Clk";
-const char s_1[] PROGMEM = ">Rnd Fnt";
-const char s_2[] PROGMEM = ">12 Hr";
-const char s_3[] PROGMEM = ">Font";
-const char s_4[] PROGMEM = ">NTP DST";
-const char s_5[] PROGMEM = ">D/Time";
-const char s_6[] PROGMEM = ">Auto LX";
-const char s_7[] PROGMEM = ">Bright";
-const char s_8[] PROGMEM = ">Exit";
-
-const char *const setupmenu[] PROGMEM = {s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8};

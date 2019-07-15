@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 14 Jul 2019
+Modified by Ratti3 - 15 Jul 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-29,068 bytes 94%
-1,075 bytes 52%
+29,698 bytes 96%
+1,157 bytes 56%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -62,8 +62,9 @@ bool dst_mode = 1;                       // [210] Enable DST function, 1 = enabl
 bool ntp_mode = 1;                       // [211] Enable NTP function, 1 = enable, 0 = disable
 byte ntp_adjust = 1;                     // Number of seconds to adjust NTP value before applying to DS3231, takes a few hundred milliseconds to process the ESP01 data
 int8_t utc_offset = 0;                   // [213] UTC offset adjustment, hours
+byte ntp_dst_hour = 2;                   // The hour daily NTP/DST sync happens, should be left at 2am if using DST mode
 byte ntp_max_retry = 3;                  // Number of time to retry NTP request 1 = 35 seconds(ish) in total, values 1 - 9
-byte ntp_dst_hour = 2;                   // The hour daily NTP/DST sync happens, should be left at 2 if using DST mode
+byte ntp_timeout = 40;                   // Used to calculate when to quit ntp() when it's not receiving data, value in seconds, it is multiplied by ntp_max_retry
 
 //global variables
 bool shut = 0;                           // Stores matrix on/off state
@@ -1533,7 +1534,7 @@ void word_clock() {
 }
 
 
-//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens, 2 = clockset. i = index
+//used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens. i = index
 char progmem_numbers(byte m, byte i) {
 
   if (m == 0) {
@@ -1542,21 +1543,18 @@ char progmem_numbers(byte m, byte i) {
   else if (m == 1) {
     strcpy_P(words, (char *)pgm_read_word(&(numberstens[i])));
   }
-  else if (m == 2) {
-    strcpy_P(words, (char *)pgm_read_word(&(clockset[i])));
-  }
 
 }
 
 
-//used by menu routines to retrieve words from progmem, m : 0 = mainmenu, 1 = setupmenu. i = index
+//used by menu routines to retrieve words from progmem, m : 0 = mainmenu, 1 = clockset. i = index
 char progmem_menus(byte m, byte i) {
 
   if (m == 0) {
     strcpy_P(words, (char *)pgm_read_word(&(mainmenu[i])));
   }
   else if (m == 1) {
-    strcpy_P(words, (char *)pgm_read_word(&(setupmenu[i])));
+    strcpy_P(words, (char *)pgm_read_word(&(clockset[i])));
   }
 
 }
@@ -1645,7 +1643,7 @@ void display_date() {
   cls();
 
   //date suffix array
-  char suffix[4][3] = {"st", "nd", "rd", "th"};
+  const char suffix[4][3] = {"st", "nd", "rd", "th"};
 
   //read the date from the DS3231
   byte dow = rtc[3]; // day of week 0 = Sunday
@@ -1842,6 +1840,8 @@ void set_next_random() {
 //dislpay menu to change the clock settings
 void setup_menu() {
 
+  const char set_modes[8][9] = {">Rnd Clk", ">Rnd Fnt", ">24 Hr", ">Font", ">D/Time", ">Auto LX", ">Bright", ">Exit"};
+
   byte setting_mode = 0;
   byte firstrun = 1;
 
@@ -1862,11 +1862,13 @@ void setup_menu() {
       }
 
       //print arrow and current clock_mode name on line one and print next clock_mode name on line two
-      progmem_menus(1, setting_mode);
+      char str_top[9];
+    
+      strcpy (str_top, set_modes[setting_mode]);
 
       byte i = 0;
-      while(words[i]) {
-        puttinychar(i * 4 + 1, 1, words[i]);
+      while(str_top[i]) {
+        puttinychar(i * 4 + 1, 1, str_top[i]);
         i++;
       }
 
@@ -2165,7 +2167,7 @@ bool set_bool_value(byte message, bool current_value){
 
   cls();
 
-  char options[5][9] = {">Set DST", ">Set NTP", ">Set 12h", ">Set Rnd", ">Set LX"};
+  const char options[5][9] = {">Set DST", ">Set NTP", ">Set 12h", ">Set Rnd", ">Set LX"};
 
   //Print "set xyz" top line
   byte i = 0;
@@ -2440,7 +2442,7 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
   cls();
 
   //Print "set xyz" top line
-  progmem_numbers(2, message);
+  progmem_menus(1, message);
   
   byte i = 0;
   while(words[i])
@@ -2718,7 +2720,7 @@ void display_options() {
 //function for setting NTP time via ESP01 and calculating DST
 void ntp() {
 
-  char buffer[50];
+  char buffer[80];
   char unixString[11];
   bool timeSync = 0;
   byte wait = 0;
@@ -2740,10 +2742,12 @@ void ntp() {
   }
 
   //holds count to quit routine if no data received from ESP01
-  int ntp_count = 1;
+  DateTime now = ds3231.now();
+  unsigned long ntp_count = now.unixtime() + (ntp_max_retry * ntp_timeout);
+  unsigned int ntp_counter = 1;
   
   while (!timeSync) {
-    if (readline(esp.read(), buffer, 50) > 0) {
+    if (readline(esp.read(), buffer, 80) > 0) {
       Serial.println(buffer); //used for debugging output from ESP01
       if (buffer[0] == 'U' && buffer[1] == 'N' && buffer[2] == 'I' && buffer[3] == 'X' && !wait) {
         // if data sent is the UNIX token, take it
@@ -2806,10 +2810,13 @@ void ntp() {
       }
     }
 
+    ntp_counter++;
     delay(1);
-    ntp_count++;
+    
+    if (ntp_counter > 5000) {
     //quit ntp routine if nothing comes from the ESP, the calculation below ensures it does not quit before ESP01 processing
-    if (ntp_count > (ntp_max_retry * 36000)) {
+    DateTime now = ds3231.now();
+    if (now.unixtime() > ntp_count) {
       char msg[9] = ">NO WIFI";
       i = 0;
       while(msg[i]) {
@@ -2819,6 +2826,8 @@ void ntp() {
       delay(1000);
       fade_down();
       timeSync = 1;
+    }
+          ntp_counter = 1;
     }
   
   }
