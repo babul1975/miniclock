@@ -10,7 +10,7 @@ Complete LEDClock32x8_ESP01-NTP.ino v1.2 (14 Jul 2019), unless bugs found.
 ESP01 code more or less complete, just need to tidy up.
 
 # read this
-This now saves settings to EEPROM, my code has been optimised to only updates if necessary. USE AT YOUR OWN RISK. EEPROM can handle 100,000 writes before failure. During my testing, there were no writes in a 24hour period. The codes includes Serial.print, which shows when the EEPROM.update method is called, this only writes if the old value is different.
+This now saves settings to EEPROM, my code has been optimised to only update if necessary. USE AT YOUR OWN RISK. EEPROM can handle 100,000 writes before failure. During my testing, there were no writes in a 24hour period. The codes includes Serial.print, which shows when the EEPROM.update method is called, this only writes if the old value is different.
 
 Planned features/changes:
 
