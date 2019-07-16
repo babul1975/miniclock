@@ -17,7 +17,7 @@ Tested on IDE v1.8.9
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/krdAU_GUc3k
-https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh1750-and-esp01-fdde2b
+https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme280-bh1750-esp01-fdde2b
 
 ***********************************************************************/
 
