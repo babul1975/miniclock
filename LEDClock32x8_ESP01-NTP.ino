@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 15 Jul 2019
+Modified by Ratti3 - 16 Jul 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-29,698 bytes 96%
-1,157 bytes 56%
+29,478 bytes 95%
+1,265 bytes 61%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/CpQsMjI3FL0
@@ -26,7 +26,7 @@ https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh
 #include <LedControl.h>                  // v1.0.6 https://github.com/wayoda/LedControl
 #include <FontLEDClock.h>                // https://github.com/javastraat/arduino/blob/master/libraries/FontLEDClock/FontLEDClock.h - however, it has been modified
 #include <Wire.h>                        // Standard Arduino library
-#include <RTClib.h>                      // v1.2.3 DS3231 RTC - https://github.com/adafruit/RTClib
+#include <RTClib.h>                      // v1.2.4 DS3231 RTC - https://github.com/adafruit/RTClib
 #include <Button.h>                      // https://github.com/tigoe/Button
 #include <Adafruit_Sensor.h>             // v1.0.3 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
@@ -40,7 +40,7 @@ https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh
 // pin 10 is connected to LOAD on the display
 LedControl lc = LedControl(12, 11, 10, 4); //sets the 3 pins as 12, 11 & 10 and then sets 4 displays (max is 8 displays)
 
-//global variables (changeable defaults), numbers in [] brackets are the EEPROM storage location for that value
+// Global variables (changeable defaults), numbers in [] brackets are the EEPROM storage location for that value
   // Clock settings
 byte intensity = 2;                      // [200] Default intensity/brightness (0-15), can be set via menu
 byte clock_mode = 0;                     // [201] Default clock mode. Default = 0 (basic_mode)
@@ -64,9 +64,15 @@ byte ntp_adjust = 1;                     // Number of seconds to adjust NTP valu
 int8_t utc_offset = 0;                   // [213] UTC offset adjustment, hours
 byte ntp_dst_hour = 2;                   // The hour daily NTP/DST sync happens, should be left at 2am if using DST mode
 byte ntp_max_retry = 3;                  // Number of time to retry NTP request 1 = 35 seconds(ish) in total, values 1 - 9
-byte ntp_timeout = 40;                   // Used to calculate when to quit ntp() when it's not receiving data, value in seconds, it is multiplied by ntp_max_retry
+byte ntp_timeout = 45;                   // Used to calculate when to quit ntp() when it's not receiving data, value in seconds, it is multiplied by ntp_max_retry
+  // Global constants - SSID and password for WiFi, passed to ESP01 via SoftwareSerial
+  // The combined SSID and password length cannot exceed 72 characters
+const byte ssid_len = 8;                 // The length of your SSID name, e.g SSID = MyWifi, ssid_len = 6
+const char ssid[] = "YourSSID";          // Your SSID name, e.g MyWifi
+const byte pass_len = 12;                // The length of your SSID password, e.g password = password, pass_len = 8
+const char pass[] = "YourPassword";      // Your SSID password, e.g password
 
-//global variables
+// Global variables
 bool shut = 0;                           // Stores matrix on/off state
 byte old_mode = clock_mode;              // Stores the previous clock mode, so if we go to date or whatever, we know what mode to go back to after.
 byte change_mode_time = 0;               // Holds hour when clock mode will next change if in random mode.
@@ -90,10 +96,10 @@ byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValu
 #define TX                 6                    // RX pin of ESP01
 #define RX                 7                    // TX pin of ESP01
 //these can be used to change the order of dosplays, some displays from ebay are wrong way round
-#define Matrix0            0
-#define Matrix1            1
-#define Matrix2            2
-#define Matrix3            3
+#define Matrix0            3
+#define Matrix1            2
+#define Matrix2            1
+#define Matrix3            0
 
 RTC_DS3231 ds3231;                              // Create RTC object
 Adafruit_BME280 bme;                            // BME280 object (pins 4 and 5 and 3.3v)
@@ -231,10 +237,10 @@ void setup() {
         Serial.print("] ");
         Serial.println(value1);*/
       }
-      /*Serial.print("Read Byte: [");
-      Serial.print(i);
-      Serial.print("] ");
-      Serial.println(value1);*/
+      //Serial.print("Read Byte: [");
+      //Serial.print(i);
+      //Serial.print("] ");
+      //Serial.println(value1);
     
     }
     else if (i >= 206 && i <= 212) {
@@ -304,10 +310,10 @@ void setup() {
         Serial.print("] ");
         Serial.println(value2);*/
       }
-      /*Serial.print("Read Bool:");
-      Serial.print(i);
-      Serial.print("] ");
-      Serial.println(value2);*/
+      //Serial.print("Read Bool: [");
+      //Serial.print(i);
+      //Serial.print("] ");
+      //Serial.println(value2);
 
     }
     else if (i == 213) {
@@ -327,10 +333,10 @@ void setup() {
         Serial.print("] ");
         Serial.println(value3);*/
       }
-      /*Serial.print("Read int8_t:");
-      Serial.print(i);
-      Serial.print("] ");
-      Serial.println(value3);*/
+      //Serial.print("Read int8_t: [");
+      //Serial.print(i);
+      //Serial.print("] ");
+      //Serial.println(value3);
     
     }
     i++;
@@ -373,9 +379,6 @@ void loop() {
     word_clock();
     break;
   case 4:
-    ntp();
-    break;
-  case 5:
     setup_menu();
     break;
   }
@@ -389,31 +392,31 @@ void eeprom_save(byte Address, byte value1, bool value2, int8_t value3) {
   switch(Address) {
     case 200 ... 205:
       EEPROM.update(Address, value1);
-      Serial.print("Update Byte: [");
-      Serial.print(Address);
-      Serial.print("] ");
-      Serial.println(value1);
+      //Serial.print("Update Byte: [");
+      //Serial.print(Address);
+      //Serial.print("] ");
+      //Serial.println(value1);
       break;
     case 206 ... 212:
       EEPROM.update(Address, value2);
-      Serial.print("Update Bool: [");
-      Serial.print(Address);
-      Serial.print("] ");
-      Serial.println(value2);
+      //Serial.print("Update Bool: [");
+      //Serial.print(Address);
+      //Serial.print("] ");
+      //Serial.println(value2);
       break;
     case 213:
       EEPROM.update(Address, value3);
-      Serial.print("Update int8_t: [");
-      Serial.print(Address);
-      Serial.print("] ");
-      Serial.println(value3);
+      //Serial.print("Update int8_t: [");
+      //Serial.print(Address);
+      //Serial.print("] ");
+      //Serial.println(value3);
       break;
     case 255:
       EEPROM.update(Address, value1);
-      Serial.print("Update Byte: [");
-      Serial.print(Address);
-      Serial.print("] ");
-      Serial.println(value1);
+      //Serial.print("Update Byte: [");
+      //Serial.print(Address);
+      //Serial.print("] ");
+      //Serial.println(value1);
       break;
   }
   
@@ -1547,19 +1550,6 @@ char progmem_numbers(byte m, byte i) {
 }
 
 
-//used by menu routines to retrieve words from progmem, m : 0 = mainmenu, 1 = clockset. i = index
-char progmem_menus(byte m, byte i) {
-
-  if (m == 0) {
-    strcpy_P(words, (char *)pgm_read_word(&(mainmenu[i])));
-  }
-  else if (m == 1) {
-    strcpy_P(words, (char *)pgm_read_word(&(clockset[i])));
-  }
-
-}
-
-
 //display_thp - print temperature, humidity and pressue
 void display_thp()
 {
@@ -1740,6 +1730,8 @@ void switch_mode() {
   //remember mode we are in. We use this value if we go into settings mode, so we can change back from settings mode (6) to whatever mode we were in.
   old_mode = clock_mode;
 
+  const char* modes[] = {">Basic", ">Small", ">Slide", ">Words", ">Setup"};
+
   byte firstrun = 1;
 
   //loop waiting for button (timeout after 35 loops to return to mode X)
@@ -1754,29 +1746,30 @@ void switch_mode() {
       if (firstrun == 0) {
         clock_mode++;
       }
-      if (clock_mode > NUM_DISPLAY_MODES + 2) {
+      if (clock_mode > NUM_DISPLAY_MODES + 1) {
         clock_mode = 0;
       }
 
       //print arrow and current clock_mode name on line one and print next clock_mode name on line two
-      progmem_menus(0, clock_mode);
+      char str_top[9];
+
+      strcpy (str_top, modes[clock_mode]);
 
       byte i = 0;
-      while (words[i]) {
-        puttinychar(i * 4 + 1, 1, words[i]);
+      while (str_top[i]) {
+        puttinychar(i * 4 + 1, 1, str_top[i]);
         i++;
       }
       firstrun = 0;
     }
     delay(50);
   }
-
-  if (clock_mode < 4) {
-    //save the values to EEPROM
-    eeprom_save(201, clock_mode, 0, 0);
-    //Serial.println(clock_mode);
+  if (old_mode != clock_mode && clock_mode < 4){
+      //save the values to EEPROM
+      eeprom_save(201, clock_mode, 0, 0);
+      //Serial.print(clock_mode);
   }
-  
+
 }
 
 
@@ -1840,7 +1833,7 @@ void set_next_random() {
 //dislpay menu to change the clock settings
 void setup_menu() {
 
-  const char set_modes[8][9] = {">Rnd Clk", ">Rnd Fnt", ">24 Hr", ">Font", ">D/Time", ">Auto LX", ">Bright", ">Exit"};
+  const char set_modes[9][9] = {">Rnd Clk", ">Rnd Fnt", ">12 Hr", ">Font", ">DST/NTP", ">D/Time", ">Auto LX", ">Bright", ">Exit"};
 
   byte setting_mode = 0;
   byte firstrun = 1;
@@ -2440,14 +2433,13 @@ void set_time() {
 int set_value(byte message, int current_value, int reset_value, int rollover_limit) {
 
   cls();
+  char messages[5][9] = {">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
 
   //Print "set xyz" top line
-  progmem_menus(1, message);
-  
   byte i = 0;
-  while(words[i])
+  while(messages[message][i])
   {
-    puttinychar(i * 4, 1, words[i]);
+    puttinychar(i * 4, 1, messages[message][i]); 
     i++;
   }
 
@@ -2717,21 +2709,33 @@ void display_options() {
 }
 
 
-//function for setting NTP time via ESP01 and calculating DST
+//function for setting NTP time via ESP01
 void ntp() {
 
   char buffer[80];
-  char unixString[11];
+  char unixString[10];
   bool timeSync = 0;
   byte wait = 0;
 
   //trigger ESP01 via software serial to receive NTP time
   esp.print("NTP");
-  esp.println(ntp_max_retry);
+  esp.print(ntp_max_retry);
+  if (ssid_len < 10) {
+    esp.print("0");
+  }
+  esp.print(ssid_len);
+  esp.print(ssid);
+  if (pass_len < 10) {
+    esp.print("0");
+  }
+  esp.print(pass_len);
+  esp.println(pass);
+  
   //send empty line to prevent premature wakeup
   esp.println(" ");
 
-  //set time using ESP01 NTP
+  Serial.println("Arduino : Sent NTP request to ESP01");
+
   cls();
   char msg[9] = ">GET NTP";
   int i = 0;
@@ -2749,7 +2753,7 @@ void ntp() {
   while (!timeSync) {
     if (readline(esp.read(), buffer, 80) > 0) {
       Serial.println(buffer); //used for debugging output from ESP01
-      if (buffer[0] == 'U' && buffer[1] == 'N' && buffer[2] == 'I' && buffer[3] == 'X' && !wait) {
+      if (buffer[0] == 'U' && buffer[1] == 'N' && buffer[2] == 'I' && buffer[3] == 'X' && wait == 0) {
         // if data sent is the UNIX token, take it
         int i = 0;
         while (i < 10) {
@@ -2758,6 +2762,7 @@ void ntp() {
         }
         unixString[10] = '\0';
 
+        //convert UNIX time to long integer and save to DS3231, add ntp_adjust secs and utc_offset
         ds3231.adjust(DateTime(atol(unixString) + ntp_adjust + (3600 * utc_offset)));
 
         //calculate dst(), tell it the request came from ntp()
@@ -2765,6 +2770,7 @@ void ntp() {
           dst(1);
         }
       
+        //increase counter to allow one more line to be read, this is just to read a blank line into serial
         wait++;
 
         //set time using ESP01 NTP - success
@@ -2782,6 +2788,7 @@ void ntp() {
         wait++;
       }
       else if (wait == 2) {
+        //complete NTP transaction
         timeSync = 1;
       }
       // NTP sending failed
@@ -2794,7 +2801,7 @@ void ntp() {
         }
         delay(1000);
         fade_down();
-        timeSync = 1;
+        wait++;
       }
       // WiFi connection failed
       else if (buffer[5] == 'F' && buffer[6] == 'a' && buffer[7] == 'i' && buffer[8] == 'l') {
@@ -2806,30 +2813,29 @@ void ntp() {
         }
         delay(1000);
         fade_down();
-        timeSync = 1;
+        wait++;
       }
     }
 
+    //quit ntp routine if nothing comes from the ESP, the calculation below ensures it does not quit before ESP01 processing
     ntp_counter++;
     delay(1);
-    
+
     if (ntp_counter > 5000) {
-    //quit ntp routine if nothing comes from the ESP, the calculation below ensures it does not quit before ESP01 processing
-    DateTime now = ds3231.now();
-    if (now.unixtime() > ntp_count) {
-      char msg[9] = ">NO WIFI";
-      i = 0;
-      while(msg[i]) {
-        puttinychar(i * 4, 1, msg[i]);
-        i++;
+      DateTime now = ds3231.now();
+      if (now.unixtime() > ntp_count) {
+        char msg[9] = ">NO WIFI";
+        i = 0;
+        while(msg[i]) {
+          puttinychar(i * 4, 1, msg[i]);
+          i++;
+        }
+        delay(1000);
+        fade_down();
+        timeSync = 1;
       }
-      delay(1000);
-      fade_down();
-      timeSync = 1;
+      ntp_counter = 1;
     }
-          ntp_counter = 1;
-    }
-  
   }
 
   clock_mode = old_mode;
