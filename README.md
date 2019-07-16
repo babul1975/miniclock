@@ -46,7 +46,7 @@ ESP01 (optional):
        # Moved more stuff out of Progmem due to stability issues in the menu
        # ESP01 now gets SSID name and password via Arduino code for convinience
        # Better error handling on ESP01
-       # Manual ntp() call removed from main menu, for some reason the manin menu caused weird issues/crashes
+       # Manual ntp() call removed from main menu, for some reason the main menu caused weird issues/crashes
 
 15 Jul 2019 - Changes:
 
