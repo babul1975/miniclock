@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 16 Jul 2019
+Modified by Ratti3 - 22 Jul 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-29,478 bytes 95%
-1,265 bytes 61%
+29,468 bytes 95%
+1,267 bytes 61%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/krdAU_GUc3k
@@ -32,7 +32,7 @@ https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme
 #include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
 #include <BH1750FVI.h>                   // v1.1.1 BH1750 Light Sensor - https://github.com/PeterEmbedded/BH1750FVI
 #include <SoftwareSerial.h>              // Used to show NTP data from ESP01
-#include <EEPROM.h>                      // Used to store DST flag to Arduino EEPROM
+#include <EEPROM.h>                      // Used to save settings to Arduino EEPROM
 
 // Setup LED Matrix
 // pin 12 is connected to the DataIn on the display
@@ -67,10 +67,10 @@ byte ntp_max_retry = 3;                  // Number of time to retry NTP request 
 byte ntp_timeout = 45;                   // Used to calculate when to quit ntp() when it's not receiving data, value in seconds, it is multiplied by ntp_max_retry
   // Global constants - SSID and password for WiFi, passed to ESP01 via SoftwareSerial
   // The combined SSID and password length cannot exceed 72 characters
-const byte ssid_len = 8;                 // The length of your SSID name, e.g SSID = MyWifi, ssid_len = 6
-const char ssid[] = "YourSSID";          // Your SSID name, e.g MyWifi
-const byte pass_len = 12;                // The length of your SSID password, e.g password = password, pass_len = 8
-const char pass[] = "YourPassword";      // Your SSID password, e.g password
+const byte ssid_len = 12;                // The length of your SSID name, e.g SSID = MyWifi, ssid_len = 6
+const char ssid[] = "YourSSID";      // Your SSID name, e.g MyWifi
+const byte pass_len = 11;                // The length of your SSID password, e.g password = password, pass_len = 8
+const char pass[] = "YourPassword";       // Your SSID password, e.g password
 
 // Global variables
 bool shut = 0;                           // Stores matrix on/off state
@@ -81,13 +81,13 @@ int rtc[7];                              // Holds real time clock output
 int light_count = 0;                     // Counter for light routine
 byte auto_intensity_value = 0;           // Stores the last intensity value set by the light sensor, this value is set automatically
 char words[1];                           // Holds word clock words, retrieved from progmem
-bool DST = 0;                            // [212] Holds DST applied value, 1 = summertime +1hr applied, this ensure DST +1/-1 runs only once
+bool DST = 0;                            // [212] Holds DST applied value, 1 = summertime +1hr applied, this is to ensure DST +1/-1 runs only once
 bool dst_ntp_run = 0;                    // Holds the value to see if ntp() and dst() have run once a day
 byte FirstRunValue = 128;                // The check digits to see if EEPROM has values saved, change this [1-254] if you want to reset EEPROM to default values
 byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValue is saved
 
 //define constants
-#define NUM_DISPLAY_MODES  3                    // Number display modes = 3 (conting zero as the first mode)
+#define NUM_DISPLAY_MODES  3                    // Number display modes = 3 (counting zero as the first mode)
 #define NUM_SETTINGS_MODES 8                    // Number settings modes = 8 (counting zero as the first mode)
 #define NUM_FONTS          7                    // Number of fonts, as defined in FontLEDClock.h
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
@@ -95,7 +95,7 @@ byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValu
 #define RandomSeed         A0                   // Pin used to generate random seed
 #define TX                 6                    // RX pin of ESP01
 #define RX                 7                    // TX pin of ESP01
-//these can be used to change the order of dosplays, some displays from ebay are wrong way round
+//these can be used to change the order of displays, some displays from ebay are wrong way round
 #define Matrix0            3
 #define Matrix1            2
 #define Matrix2            1
@@ -559,7 +559,7 @@ void printver() {
 void puttinychar(byte x, byte y, char c) {
 
   byte dots;
-  if (c >= 'A' && c <= 'Z' || (c >= 'a' && c <= 'z') ) {
+  if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
     c &= 0x1F;   // A-Z maps to 1-26
   }
   else if (c >= '0' && c <= '9') {
@@ -751,15 +751,11 @@ void small_mode() {
         hours = hours + ampm * 12;
       }
 
-
-      //byte dow  = rtc[3]; // the DS3231 outputs 0 - 6 where 0 = Sunday0 - 6 where 0 = Sunday.
-      //byte date = rtc[4];
-
       //set characters
       char buffer[3];
       itoa(hours, buffer, 10);
 
-      //fix - as otherwise if num has leading zero, e.g. "03" hours, itoa coverts this to chars with space "3 ".
+      //fix - as otherwise if num has leading zero, e.g. "03" hours, itoa converts this to chars with space "3 ".
       if (hours < 10) {
         buffer[1] = buffer[0];
         //if we are in 12 hour mode blank the leading zero.
@@ -786,11 +782,10 @@ void small_mode() {
 
       //do seconds
       textchar[5] = ':';
-      buffer[3];
       secs = rtc[0];
       itoa(secs, buffer, 10);
 
-      //fix - as otherwise if num has leading zero, e.g. "03" secs, itoa coverts this to chars with space "3 ".
+      //fix - as otherwise if num has leading zero, e.g. "03" secs, itoa converts this to chars with space "3 ".
       if (secs < 10) {
         buffer[1] = buffer[0];
         buffer[0] = '0';
@@ -798,9 +793,6 @@ void small_mode() {
       //set seconds
       textchar[6] = buffer[0];
       textchar[7] = buffer[1];
-
-      byte x = 0;
-      byte y = 0;
 
       //print each char
       for (byte x = 0; x < 6 ; x++) {
@@ -821,7 +813,6 @@ void basic_mode() {
 
   char buffer[3];   //for int to char conversion to turn rtc values into chars we can print on screen
   byte offset = 0;  //used to offset the x postition of the digits and centre the display when we are in 12 hour mode and the clock shows only 3 digits. e.g. 3:21
-  byte x, y;        //used to draw a clear box over the left hand "1" of the display when we roll from 12:59 -> 1:00am in 12 hour mode.
 
   //do 12/24 hour conversion if ampm set to 1
   byte hours = rtc[2];
@@ -837,10 +828,10 @@ void basic_mode() {
   if (ampm && hours < 10) {
     offset = 2;
   }
-  
+
   //set the next minute we show the date at
   //set_next_date();
-  
+
   // initially set mins to value 100 - so it wll never equal rtc[1] on the first loop of the clock, meaning we draw the clock display when we enter the function
   byte secs = 100;
   byte mins = 100;
@@ -1538,7 +1529,7 @@ void word_clock() {
 
 
 //used by word mode to retrieve words from progmem, m : 0 = numbers, 1 = numberstens. i = index
-char progmem_numbers(byte m, byte i) {
+void progmem_numbers(byte m, byte i) {
 
   if (m == 0) {
     strcpy_P(words, (char *)pgm_read_word(&(numbers[i])));
@@ -1888,13 +1879,13 @@ void setup_menu() {
       set_ntp_dst();
       break;
     case 5:
-      set_time(); 
+      set_time();
       break;
     case 6:
-      set_auto_intensity(); 
+      set_auto_intensity();
       break;
     case 7:
-      set_intensity(); 
+      set_intensity();
       break;
     case 8:
       //exit menu
@@ -1923,7 +1914,7 @@ void set_random() {
 
   //set hour mode will change
   set_next_random();
-  
+
   //save the values to EEPROM
   eeprom_save(206, 0, random_mode, 0);
   //Serial.println("random_mode");
@@ -1944,7 +1935,7 @@ void set_random_font() {
 
   //set the values
   random_font_mode = set_random_font_mode;
-  
+
   //set hour mode will change
   set_next_random();
 
@@ -2055,7 +2046,7 @@ void set_font_case(int value) {
 
 
 //get user values for setting font
-int get_font_value(int current_value, int min_value, int max_value) {
+void get_font_value(int current_value, int min_value, int max_value) {
   
   //print digits bottom line
   char buffer[2] = " ";
@@ -2361,7 +2352,7 @@ void set_intensity() {
   //save the values to EEPROM
   eeprom_save(200, intensity, 0, 0);
   //Serial.println("intensity");
-  
+
 }
 
 
@@ -2500,7 +2491,7 @@ int set_value(byte message, int current_value, int reset_value, int rollover_lim
 }
 
 
-// finction to get time from DS3231
+// function to get time from DS3231
 void get_time() {
 
   //get time
@@ -2663,9 +2654,7 @@ void display_options() {
 
   cls();
 
-  char options[6][9] = {
-    ">Normal", ">On", ">Off", "> 9.00pm", ">10.00 pm", ">11.00 pm"
-  };
+  char options[6][9] = {">Normal", ">On", ">Off", "> 9.00pm", ">10.00pm", ">11.00pm"};
 
   display_mode++;
   if (display_mode == 6) {
@@ -2875,9 +2864,7 @@ void dst(bool ntp) {
   get_time();
   byte day = rtc[4];
   byte month = rtc[5];
-  int year = rtc[6];
   byte hour = rtc[2];
-  byte minute = rtc[1];
   byte dow = rtc[3];
 
   //temporarily store DST changes
@@ -2885,7 +2872,7 @@ void dst(bool ntp) {
   bool dst_minus = 0;
 
   //winter calculation
-  if ((month < 3 || month > 10) || (month == 3 && day < 25) || (month == 10 && day >= 25 && hour == 2 && dow == 0) && DST == 1) {
+  if ((month < 3 || month > 10) || (month == 3 && day < 25 && DST == 1) || (month == 10 && day >= 25 && hour == 2 && dow == 0 && DST == 1)) {
     DST = 0; //winter is coming
     dst_minus = 1;
     //save to EEPROM
@@ -2893,7 +2880,7 @@ void dst(bool ntp) {
     //Serial.println("winter");
   }
   //summer calculation
-  else if ((month > 3 && month < 10) || (month == 10 && day < 25) || (month == 3 && day >= 25 && hour == 1 && dow == 0) && DST == 0) {
+  else if ((month > 3 && month < 10) || (month == 10 && day < 25 && DST == 0) || (month == 3 && day >= 25 && hour == 1 && dow == 0 && DST == 0)) {
     DST = 1; //hosepipe ban is coming
     dst_plus = 1;
     //save to EEPROM
