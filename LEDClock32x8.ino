@@ -31,7 +31,7 @@ https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme
 #include <Adafruit_Sensor.h>             // v1.0.3 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
 #include <BH1750FVI.h>                   // v1.1.1 BH1750 Light Sensor - https://github.com/PeterEmbedded/BH1750FVI
-#include <EEPROM.h>                      // Used to store DST flag to Arduino EEPROM
+#include <EEPROM.h>                      // Used to save settings to Arduino EEPROM
 
 // Setup LED Matrix
 // pin 12 is connected to the DataIn on the display
