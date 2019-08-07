@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 22 Jul 2019
+Modified by Ratti3 - 07 Aug 2019
 Mini Clock v1.2 (ESP01 Version)
 Tested on IDE v1.8.9
 
-29,468 bytes 95%
-1,267 bytes 61%
+29,462 bytes 95%
+1,257 bytes 61%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/krdAU_GUc3k
@@ -68,9 +68,9 @@ byte ntp_timeout = 45;                   // Used to calculate when to quit ntp()
   // Global constants - SSID and password for WiFi, passed to ESP01 via SoftwareSerial
   // The combined SSID and password length cannot exceed 72 characters
 const byte ssid_len = 12;                // The length of your SSID name, e.g SSID = MyWifi, ssid_len = 6
-const char ssid[] = "YourSSID";      // Your SSID name, e.g MyWifi
+const char ssid[] = "TheInternets";      // Your SSID name, e.g MyWifi
 const byte pass_len = 11;                // The length of your SSID password, e.g password = password, pass_len = 8
-const char pass[] = "YourPassword";       // Your SSID password, e.g password
+const char pass[] = "10707A8DAFa";       // Your SSID password, e.g password
 
 // Global variables
 bool shut = 0;                           // Stores matrix on/off state
@@ -88,7 +88,7 @@ byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValu
 
 //define constants
 #define NUM_DISPLAY_MODES  3                    // Number display modes = 3 (counting zero as the first mode)
-#define NUM_SETTINGS_MODES 8                    // Number settings modes = 8 (counting zero as the first mode)
+#define NUM_SETTINGS_MODES 9                    // Number settings modes = 9 (counting zero as the first mode)
 #define NUM_FONTS          7                    // Number of fonts, as defined in FontLEDClock.h
 #define SLIDE_DELAY        20                   // The time in milliseconds for the slide effect per character in slide mode. Make this higher for a slower effect
 #define cls                clear_display        // Clear display
@@ -108,7 +108,6 @@ BH1750FVI lux(BH1750FVI::k_DevModeContHighRes); // BH1750 object (pins 4 and 5 a
 Button buttonA = Button(2, BUTTON_PULLUP);      // Menu button
 Button buttonB = Button(3, BUTTON_PULLUP);      // Display date / + button
 Button buttonC = Button(4, BUTTON_PULLUP);      // Temp/Humidity/Pressure / - button
-Button buttonD = Button(5, BUTTON_PULLUP);      // Display options button
 
 SoftwareSerial esp(RX, TX); // 7, 6             // Software Serial 7 and 6, ESP01 serial connects to these, (pins RX and TX and 3.3v via external regulator)
 
@@ -117,7 +116,6 @@ void setup() {
   digitalWrite(2, HIGH);                        // turn on pullup resistor for button on pin 2
   digitalWrite(3, HIGH);                        // turn on pullup resistor for button on pin 3
   digitalWrite(4, HIGH);                        // turn on pullup resistor for button on pin 4
-  digitalWrite(5, HIGH);                        // turn on pullup resistor for button on pin 5
   
   Serial.begin(9600); //start serial
   esp.begin(9600);    //start software serial for ESP01
@@ -713,10 +711,6 @@ void small_mode() {
       display_thp();
       return;
     }
-    if (buttonD.uniquePress()) {
-      display_options();
-      return;
-    }
     
     //if secs changed then update them on the display
     secs = rtc[0];
@@ -863,10 +857,6 @@ void basic_mode() {
       display_thp();
       return;
     }
-    if (buttonD.uniquePress()) {
-      display_options();
-      return;
-    }
 
     //check whether it's time to automatically display the date
     //check_show_date();
@@ -999,10 +989,6 @@ void slide() {
     }
     if (buttonC.uniquePress()) {
       display_thp();
-      return;
-    }
-    if (buttonD.uniquePress()) {
-      display_options();
       return;
     }
 
@@ -1229,10 +1215,6 @@ void word_clock() {
       display_thp();
       return;
     }
-    if (buttonD.uniquePress()) {
-      display_options();
-      return;
-    }
 
     get_time(); //get the time from the clock chip
     mins = rtc[1];  //get mins
@@ -1413,10 +1395,7 @@ void word_clock() {
         display_thp();
         return;
       }
-      if (buttonD.uniquePress()) {
-        display_options();
-        return;
-      }
+
     delay(1);
     counter--;    
     }
@@ -1449,10 +1428,7 @@ void word_clock() {
         display_thp();
         return;
       }
-      if (buttonD.uniquePress()) {
-        display_options();
-        return;
-      }
+
       delay(1);
       counter--;
     }
@@ -1484,10 +1460,7 @@ void word_clock() {
         display_thp();
         return;
       }
-      if (buttonD.uniquePress()) {
-        display_options();
-        return;
-      }
+
       delay(1);
       counter--;
     }
@@ -1508,10 +1481,7 @@ void word_clock() {
         display_thp();
         return;
       }
-      if (buttonD.uniquePress()) {
-        display_options();
-        return;
-      }
+
       delay(1);
       counter--;
 
@@ -1824,7 +1794,7 @@ void set_next_random() {
 //dislpay menu to change the clock settings
 void setup_menu() {
 
-  const char set_modes[9][9] = {">Rnd Clk", ">Rnd Fnt", ">12 Hr", ">Font", ">DST/NTP", ">D/Time", ">Auto LX", ">Bright", ">Exit"};
+  const char set_modes[10][9] = {">Rnd Clk", ">Rnd Fnt", ">12 Hr", ">Font", ">DST/NTP", ">D/Time", ">Auto LX", ">Display", ">Bright", ">Exit"};
 
   byte setting_mode = 0;
   byte firstrun = 1;
@@ -1885,9 +1855,12 @@ void setup_menu() {
       set_auto_intensity();
       break;
     case 7:
-      set_intensity();
+      set_display_options();
       break;
     case 8:
+      set_intensity();
+      break;
+    case 9:
       //exit menu
       break;
   }
@@ -2650,16 +2623,11 @@ void set_devices(bool m, byte i) {
 
 
 //Routine to set display on/off options (0 = normal, 1 = always on, 2 = always off, 3 - 5 = after specific time)
-void display_options() {
+void set_display_options() {
 
   cls();
 
   char options[6][9] = {">Normal", ">On", ">Off", "> 9.00pm", ">10.00pm", ">11.00pm"};
-
-  display_mode++;
-  if (display_mode == 6) {
-    display_mode = 0;
-  }
 
   byte i = 0;
   while(options[display_mode][i])
@@ -2668,28 +2636,47 @@ void display_options() {
     i++;
   }
 
-  delay(1000);
-  cls();
+  //wait for button input
+  while (!buttonA.uniquePress()) {
 
-  //display current lux value
-  char msg[4] = "LX:";
-  i = 0;
-  while(msg[i])
-  {
-    puttinychar(i * 4, 1, msg[i]);
-    i++;
-  }
+    while (buttonB.isPressed()) {
+      display_mode++;
+      if (display_mode == 6) {
+        display_mode = 0;
+      }
 
-  char buffer[6];
-  dtostrf(lux.GetLightIntensity(), 5, 0, buffer);
-  i = 0;
-  while(buffer[i])
-  {
-    puttinychar(i * 4 + 12, 1, buffer[i]);
-    i++;
+      //print the new value
+      cls();
+
+      byte i = 0;
+      while(options[display_mode][i])
+      {
+        puttinychar(i * 4, 1, options[display_mode][i]); 
+        i++;
+      }
+      delay(150);
+    }
+    while (buttonC.isPressed()) {
+      //display current lux value
+      cls();
+      byte i = 0;
+      char msg[4] = "LX:";
+      i = 0;
+      while(msg[i]) {
+        puttinychar(i * 4, 1, msg[i]);
+        i++;
+      }
+      char buffer[6];
+      dtostrf(lux.GetLightIntensity(), 5, 0, buffer);
+      i = 0;
+      while(buffer[i]) {
+        puttinychar(i * 4 + 12, 1, buffer[i]);
+        i++;
+      }
+      delay(150);
+    }
+
   }
-  
-  delay(1000);
 
   //save the values to EEPROM
   eeprom_save(202, display_mode, 0, 0);
