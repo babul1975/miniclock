@@ -36,13 +36,16 @@ Switches:
   D2 - Menu
   D3 - Date / +
   D4 - Temp / -
-  D5 - Display options
   
 ESP01 (optional):
 3.3 Power Regulator Required, and level shifter for the TX/RX pins
   D7 - ESP01 TX
   D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+07 Aug 2019 - Changes:
+
+       # Changed from 4 buttons to 3 buttons, display_options menu moved to setup_menu
 
 22 Jul 2019 - Changes:
 
