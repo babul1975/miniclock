@@ -5,10 +5,14 @@ Arduino Create > https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-cloc
 
 Arduino based mini LED matrix clock, with BME280 Sensor and BH1750 Light Sensor.
 Optional code for ESP01 to set time via NTP.
+All versions save settings to EEPROM.
 
-Complete LEDClock32x8.ino v1.1 (22 Jul 2019), unless bugs found.
-Complete LEDClock32x8_ESP01-NTP.ino v1.2 (22 Jul 2019), unless bugs found.
-Complete ESP-01_NTP.ino (22 Jul 2019), unless bugs found.
+The different versions:
+  LEDClock32x8.ino v1.1 (22 Jul 2019), This is the basic version with no ESP01
+  LEDClock32x8_ESP01-NTP.ino v1.2 (22 Jul 2019), same as above with ESP01
+  LEDClock32x8_ESP01-NTP_LED-Switches.ino v1.2 (18 Aug 2019), same as previous, but pin 8 is used to power some LEDs 
+
+  ESP-01_NTP.ino (22 Jul 2019), the ESP01 code
 
 # read this (22 Jul 2019)
 This now saves settings to EEPROM, my code has been optimised to only update if necessary. USE AT YOUR OWN RISK. EEPROM can handle 100,000 writes before failure. During my testing, there were no writes in a 24hour period. The codes includes Serial.print, which shows when the EEPROM.update method is called, this only writes if the old value is different.
@@ -42,6 +46,10 @@ ESP01 (optional):
   D7 - ESP01 TX
   D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+19 Aug 2019 - Changes:
+
+       # Added a version that powers LEDs via PIN 8 in, see https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh1750-and-esp01-fdde2b for the completed case.
 
 07 Aug 2019 - Changes:
 
