@@ -1,5 +1,5 @@
 # miniclock
-Video Here > https://youtu.be/krdAU_GUc3k
+Video Here > https://youtu.be/MRocFW43dEg and Here > https://youtu.be/krdAU_GUc3k
 
 Arduino Create > https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme280-bh1750-esp01-fdde2b
 
@@ -20,7 +20,9 @@ This now saves settings to EEPROM, my code has been optimised to only update if 
 # read this too (22 Jul 2019)
 I feel this is now complete (both versions), I have made it stable as possible and seems to work for me. I don't plan on adding any
 more features.
-I will make a case for it soon.
+
+# case has now been made (23 Aug 2019)
+https://youtu.be/MRocFW43dEg
 
 See KnownIssues.md for issues.
 
@@ -40,6 +42,7 @@ Switches:
   D2 - Menu
   D3 - Date / +
   D4 - Temp / -
+  (Note: Switch on D5 has been removed, display options has now moved to the setup menu)
   
 ESP01 (optional):
 3.3 Power Regulator Required, and level shifter for the TX/RX pins
