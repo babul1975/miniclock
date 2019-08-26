@@ -8,14 +8,15 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 18 Aug 2019
+Modified by Ratti3 - 26 Aug 2019
 Mini Clock v1.2 (ESP01 Version, LED Switch power via pin D8)
 Tested on IDE v1.8.9
 
-29,478 bytes 95%
-1,257 bytes 61%
+29,450 bytes 95%
+1,249 bytes 60%
 
 https://github.com/Ratti3/miniclock
+https://youtu.be/MRocFW43dEg
 https://youtu.be/krdAU_GUc3k
 https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme280-bh1750-esp01-fdde2b
 
@@ -29,7 +30,7 @@ https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme
 #include <RTClib.h>                      // v1.2.4 DS3231 RTC - https://github.com/adafruit/RTClib
 #include <Button.h>                      // https://github.com/tigoe/Button
 #include <Adafruit_Sensor.h>             // v1.0.3 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
-#include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor -  https://github.com/adafruit/Adafruit_BME280_Library
+#include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor - https://github.com/adafruit/Adafruit_BME280_Library
 #include <BH1750FVI.h>                   // v1.1.1 BH1750 Light Sensor - https://github.com/PeterEmbedded/BH1750FVI
 #include <SoftwareSerial.h>              // Used to show NTP data from ESP01
 #include <EEPROM.h>                      // Used to save settings to Arduino EEPROM
@@ -48,11 +49,12 @@ bool random_mode = 0;                    // [206] Define random mode - changes t
 bool random_font_mode = 0;               // [207] Define font random mode - changes the font every few hours. 1 = random font on
 bool ampm = 0;                           // [208] Define 12 or 24 hour time. 0 = 24 hour. 1 = 12 hour
   // Light settings
-byte display_mode = 5;                   // [202] Default display on/off mode, used by light sensor. 0 = normal, 1 = always on, 2 - always off, 3 - 5 = defined by hour_off_1,2,3
+byte display_mode = 4;                   // [202] Default display on/off mode, used by light sensor. 0 = normal, 1 = always on, 2 - 4 = defined by hour_off_1,2,3
 bool auto_intensity = 1;                 // [209] Default auto light intensity setting
 byte hour_off_1 = 21;                    // These three define the hour light sensor can turn off display if dark enough, format is 24 hours, the routine for
-byte hour_off_2 = 22;                    // this checks between 8.00 and one of these values
+byte hour_off_2 = 22;                    // this checks between hour_on and one of these values
 byte hour_off_3 = 23;
+byte hour_on = 6;                        // This is used to turn on the display, works with hour_off_1,2,3
   // Font settings - these are set via the setup Font menu, see set_font_case() routine for all default values:
 byte font_style = 2;                     // [203] Default clock large font style
 byte font_offset = 1;                    // [204] Default clock large font offset adjustment
@@ -68,9 +70,9 @@ byte ntp_timeout = 45;                   // Used to calculate when to quit ntp()
   // Global constants - SSID and password for WiFi, passed to ESP01 via SoftwareSerial
   // The combined SSID and password length cannot exceed 72 characters
 const byte ssid_len = 12;                // The length of your SSID name, e.g SSID = MyWifi, ssid_len = 6
-const char ssid[] = "xxxxxxxxxxxx";      // Your SSID name, e.g MyWifi
+const char ssid[] = "xxxxxxxx";      // Your SSID name, e.g MyWifi
 const byte pass_len = 11;                // The length of your SSID password, e.g password = password, pass_len = 8
-const char pass[] = "xxxxxxxxxxx";       // Your SSID password, e.g password
+const char pass[] = "xxxxxxxx";       // Your SSID password, e.g password
 
 // Global variables
 bool shut = 0;                           // Stores matrix on/off state
@@ -1471,7 +1473,7 @@ void word_clock() {
 
     //hold display blank but check for button presses before starting again.
     counter = 1000;
-    while (counter > 0){
+    while (counter > 0) {
        //check for button press
       if (buttonA.uniquePress()) {
         switch_mode();
@@ -2500,48 +2502,44 @@ void light() {
   uint16_t lx = lux.GetLightIntensity();
 
   //checks if display can be turned off if option to keep it on until a certain time is met
-  bool dont_turn_off = false;
-  if (display_mode > 2) {
+  bool dont_turn_off = 0;
+  if (display_mode > 1) {
     byte hr = rtc[2];
     switch(display_mode) {
-      case 3:
-      if (hr > 7 && hr < hour_off_1) {
-        dont_turn_off = true;
+      case 2:
+      if (hr >= hour_on && hr < hour_off_1) {
+        dont_turn_off = 1;
       }
       else {
-        dont_turn_off = false;
+        dont_turn_off = 0;
+      }
+      break;
+      case 3:
+      if (hr >= hour_on && hr < hour_off_2) {
+        dont_turn_off = 1;
+      }
+      else {
+        dont_turn_off = 0;
       }
       break;
       case 4:
-      if (hr > 7 && hr < hour_off_2) {
-        dont_turn_off = true;
+      if (hr >= hour_on && hr < hour_off_3) {
+        dont_turn_off = 1;
       }
       else {
-        dont_turn_off = false;
-      }
-      break;
-      case 5:
-      if (hr > 7 && hr < hour_off_3) {
-        dont_turn_off = true;
-      }
-      else {
-        dont_turn_off = false;
+        dont_turn_off = 0;
       }
       break;
     }
   }
 
-  if (display_mode == 2) {
+  if (lx == 0 && !shut && !dont_turn_off && display_mode != 1) {
     shut = 1;
-    set_devices(false, 0); //Call sleep routine to turn off matrix, applies only when 4th button is used to turn it always off
+    set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough
   }
-  else if (lx == 0 && !shut && !dont_turn_off && (display_mode == 0 || display_mode > 2)) {
-    shut = 1;
-    set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough and 4th button option is normal
-  }
-  else if (lx > 0 && shut && display_mode != 2) {
+  if (lx > 0 && shut) {
     shut = 0;
-    set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough and 4th button is not set to always off
+    set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough
   }
 
   //this runs if auto_intensity is true and display is not off, it defines the intensity based on the light sensor and calls set_devices to set intensity.
@@ -2611,9 +2609,6 @@ void set_devices(bool m, byte i) {
   for (int address = 0; address < devices; address++) {
     if (!m) {
       //turns on/off matrix
-      if (display_mode == 2) {
-        delay(2000);
-      }
       lc.shutdown(address, shut);
     }
     else {
@@ -2625,12 +2620,12 @@ void set_devices(bool m, byte i) {
 }
 
 
-//Routine to set display on/off options (0 = normal, 1 = always on, 2 = always off, 3 - 5 = after specific time)
+//Routine to set display on/off options (0 = normal, 1 = always on, 2 - 4 = from specific time)
 void set_display_options() {
 
   cls();
 
-  char options[6][9] = {">Normal", ">On", ">Off", "> 9.00pm", ">10.00pm", ">11.00pm"};
+  char options[5][9] = {">Normal", ">On", "> 9.00pm", ">10.00pm", ">11.00pm"};
 
   byte i = 0;
   while(options[display_mode][i])
@@ -2644,7 +2639,7 @@ void set_display_options() {
 
     while (buttonB.isPressed()) {
       display_mode++;
-      if (display_mode == 6) {
+      if (display_mode == 5) {
         display_mode = 0;
       }
 
