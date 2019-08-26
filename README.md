@@ -50,6 +50,11 @@ ESP01 (optional):
   D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+26 Aug 2019 - Changes:
+
+       # Fixed display not turning off after going to sleep
+       # Removed always off mode
+
 19 Aug 2019 - Changes:
 
        # Added a version that powers LEDs via PIN 8 in, see https://create.arduino.cc/projecthub/Ratti3/led-matrix-word-clock-with-bme280-bh1750-and-esp01-fdde2b for the completed case.
