@@ -8,4 +8,4 @@
       As far as I'm concerned this is not a big problem, only happens when the above conditions are met. The device just reboots.
     # Possible Issue - DST calculations are based on well known DST calculation info that is availble on the internet.
       I have not tested it.
-    # 23/08/2019 - When the display goes to sleep whilst running in Word mode, it may not wake up automatically. Currently testing a fix.
+    # FIXED - 23/08/2019 - When the display goes to sleep whilst running in Word mode, it may not wake up automatically. - FIXED
