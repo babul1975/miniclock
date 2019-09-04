@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 26 Aug 2019
-Mini Clock v1.2 (ESP01 Version, LED Switch power via pin D8)
+Modified by Ratti3 - 03 Sep 2019
+Mini Clock v1.3 (ESP01 Version, LED Switch power via pin D8)
 Tested on IDE v1.8.9
 
-29,450 bytes 95%
-1,249 bytes 60%
+29,480 bytes 95%
+1,239 bytes 60%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/MRocFW43dEg
@@ -70,9 +70,9 @@ byte ntp_timeout = 45;                   // Used to calculate when to quit ntp()
   // Global constants - SSID and password for WiFi, passed to ESP01 via SoftwareSerial
   // The combined SSID and password length cannot exceed 72 characters
 const byte ssid_len = 12;                // The length of your SSID name, e.g SSID = MyWifi, ssid_len = 6
-const char ssid[] = "xxxxxxxx";      // Your SSID name, e.g MyWifi
+const char ssid[] = "SSID";              // Your SSID name, e.g MyWifi
 const byte pass_len = 11;                // The length of your SSID password, e.g password = password, pass_len = 8
-const char pass[] = "xxxxxxxx";       // Your SSID password, e.g password
+const char pass[] = "PASSWORD";          // Your SSID password, e.g password
 
 // Global variables
 bool shut = 0;                           // Stores matrix on/off state
@@ -98,10 +98,10 @@ byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValu
 #define TX                 6                    // RX pin of ESP01
 #define RX                 7                    // TX pin of ESP01
 //these can be used to change the order of displays, some displays from ebay are wrong way round
-#define Matrix0            0
-#define Matrix1            1
-#define Matrix2            2
-#define Matrix3            3
+#define Matrix0            3
+#define Matrix1            2
+#define Matrix2            1
+#define Matrix3            0
 
 RTC_DS3231 ds3231;                              // Create RTC object
 Adafruit_BME280 bme;                            // BME280 object (pins 4 and 5 and 3.3v)
@@ -526,8 +526,8 @@ void fade_down() {
 void printver() {
 
   byte i = 0;
-  char ver_a[9] = "Vers 1.2";
-  char ver_b[9] = " Ratti3 ";
+  const char ver_a[] = "Vers 1.3";
+  const char ver_b[] = " Ratti3 ";
 
   //test all leds.
   for (byte x = 0; x <= 31; x++) {
@@ -1246,11 +1246,11 @@ void word_clock() {
       int minsdigit = rtc[1] % 10;
       byte minsdigitten = (rtc[1] / 10) % 10;
 
-      char past[5] = "PAST";
-      char to[3] = "TO";
-      char half[5] = "HALF";
-      char quar[8] = "QUARTER";
-      char oclk[8] = "O'CLOCK";
+      const char past[] = "PAST";
+      const char to[] = "TO";
+      const char half[] = "HALF";
+      const char quar[] = "QUARTER";
+      const char oclk[] = "O'CLOCK";
 
       //if both mins are zero, i.e. it is on the hour, the top line reads "hours" and bottom line reads "o'clock"
       if (minsdigitten == 0 && minsdigit == 0  ) {
@@ -1580,7 +1580,7 @@ void display_thp()
     i++;
   }
   byte x = 0;
-  char mb[3] = "mb";
+  const char mb[] = "mb";
   while (mb[x]) {
     puttinychar(i * 4 + 8, 1, mb[x]);
     x++;i++;
@@ -1691,12 +1691,12 @@ void display_date() {
 void switch_mode() {
 
   //not sure why, but this is needed to stop ampm bool getting messed up
-  ampm = eeprom_read_bool(208);
+  //ampm = eeprom_read_bool(208);
   
   //remember mode we are in. We use this value if we go into settings mode, so we can change back from settings mode (6) to whatever mode we were in.
   old_mode = clock_mode;
 
-  const char* modes[] = {">Basic", ">Small", ">Slide", ">Words", ">Setup"};
+  const char modes[5][7] = {">Basic", ">Small", ">Slide", ">Words", ">Setup"};
 
   byte firstrun = 1;
 
@@ -1835,7 +1835,7 @@ void setup_menu() {
     }
     delay(50);
   }
-  
+
   //pick the mode 
   switch(setting_mode) {
     case 0:
@@ -1951,7 +1951,7 @@ void set_font() {
   cls();
 
   byte i = 0;
-  char text[9] = ">Set Fnt";
+  const char text[] = ">Set Fnt";
   while(text[i]) {
     puttinychar(i * 4, 1, text[i]);
     i++;
@@ -2142,7 +2142,7 @@ bool set_bool_value(byte message, bool current_value){
   delay(1500);
   cls();
 
-  char text[2][5] = {">OFF", ">ON "};
+  const char text[2][5] = {">OFF", ">ON "};
 
   //print current value
   i = 0;
@@ -2193,7 +2193,7 @@ bool set_bool_value(byte message, bool current_value){
 int8_t set_ntp_dst_int8_t_value(int8_t current_value, int8_t reset_value, int8_t rollover_limit){
 
   cls();
-  char messages[9] = {">Set UTC"};
+  const char messages[] = {">Set UTC"};
 
   //Print "set xyz" top line
   byte i = 0;
@@ -2265,7 +2265,7 @@ void set_intensity() {
   cls();
   
   byte i = 0;
-  char text[8] = ">Bright";
+  const char text[] = ">Bright";
   while(text[i]) {
     puttinychar((i * 4) + 3, 0, text[i]);
     i++;
@@ -2402,7 +2402,7 @@ void set_time() {
 int set_value(byte message, int current_value, int reset_value, int rollover_limit) {
 
   cls();
-  char messages[5][9] = {">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
+  const char messages[5][9] = {">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
 
   //Print "set xyz" top line
   byte i = 0;
@@ -2625,7 +2625,7 @@ void set_display_options() {
 
   cls();
 
-  char options[5][9] = {">Normal", ">On", "> 9.00pm", ">10.00pm", ">11.00pm"};
+  const char options[5][9] = {">NORMAL", ">ON", "> 9.00PM", ">10.00PM", ">11.00PM"};
 
   byte i = 0;
   while(options[display_mode][i])
@@ -2639,7 +2639,7 @@ void set_display_options() {
 
     while (buttonB.isPressed()) {
       display_mode++;
-      if (display_mode == 5) {
+      if (display_mode > 4) {
         display_mode = 0;
       }
 
@@ -2658,7 +2658,7 @@ void set_display_options() {
       //display current lux value
       cls();
       byte i = 0;
-      char msg[4] = "LX:";
+      const char msg[] = "LX:";
       i = 0;
       while(msg[i]) {
         puttinychar(i * 4, 1, msg[i]);
@@ -2711,7 +2711,7 @@ void ntp() {
   Serial.println("Arduino : Sent NTP request to ESP01");
 
   cls();
-  char msg[9] = ">GET NTP";
+  const char msg[] = ">GET NTP";
   int i = 0;
   while(msg[i])
   {
@@ -2749,7 +2749,7 @@ void ntp() {
 
         //set time using ESP01 NTP - success
         fade_down();
-        char msg[8] = ">NTP OK";
+        const char msg[] = ">NTP OK";
         i = 0;
         while(msg[i]) {
           puttinychar(i * 4, 1, msg[i]);
@@ -2767,7 +2767,7 @@ void ntp() {
       }
       // NTP sending failed
       else if (buffer[4] == 'F' && buffer[5] == 'a' && buffer[6] == 'i' && buffer[7] == 'l') {
-        char msg[9] = ">NTP ERR";
+        const char msg[] = ">NTP ERR";
         i = 0;
         while(msg[i]) {
           puttinychar(i * 4, 1, msg[i]);
@@ -2779,7 +2779,7 @@ void ntp() {
       }
       // WiFi connection failed
       else if (buffer[5] == 'F' && buffer[6] == 'a' && buffer[7] == 'i' && buffer[8] == 'l') {
-        char msg[9] = ">WIFI ER";
+        const char msg[] = ">WIFI ER";
         i = 0;
         while(msg[i]) {
           puttinychar(i * 4, 1, msg[i]);
@@ -2798,7 +2798,7 @@ void ntp() {
     if (ntp_counter > 5000) {
       DateTime now = ds3231.now();
       if (now.unixtime() > ntp_count) {
-        char msg[9] = ">NO WIFI";
+        const char msg[] = ">NO WIFI";
         i = 0;
         while(msg[i]) {
           puttinychar(i * 4, 1, msg[i]);

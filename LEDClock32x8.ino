@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 26 Aug 2019
+Modified by Ratti3 - 03 Sep 2019
 Mini Clock v1.1 (Non ESP01 Version)
 Tested on IDE v1.8.9
 
-26,050 bytes 84%
-1,001 bytes 48%
+26,040 bytes 84%
+991 bytes 48%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/MRocFW43dEg
@@ -459,8 +459,8 @@ void fade_down() {
 void printver() {
 
   byte i = 0;
-  char ver_a[9] = "Vers 1.1";
-  char ver_b[9] = " Ratti3 ";
+  const char ver_a[] = "Vers 1.1";
+  const char ver_b[] = " Ratti3 ";
 
   //test all leds.
   for (byte x = 0; x <= 31; x++) {
@@ -1179,11 +1179,11 @@ void word_clock() {
       int minsdigit = rtc[1] % 10;
       byte minsdigitten = (rtc[1] / 10) % 10;
 
-      char past[5] = "PAST";
-      char to[3] = "TO";
-      char half[5] = "HALF";
-      char quar[8] = "QUARTER";
-      char oclk[8] = "O'CLOCK";
+      const char past[] = "PAST";
+      const char to[] = "TO";
+      const char half[] = "HALF";
+      const char quar[] = "QUARTER";
+      const char oclk[] = "O'CLOCK";
 
       //if both mins are zero, i.e. it is on the hour, the top line reads "hours" and bottom line reads "o'clock"
       if (minsdigitten == 0 && minsdigit == 0  ) {
@@ -1513,7 +1513,7 @@ void display_thp()
     i++;
   }
   byte x = 0;
-  char mb[3] = "mb";
+  const char mb[] = "mb";
   while (mb[x]) {
     puttinychar(i * 4 + 8, 1, mb[x]);
     x++;i++;
@@ -1624,12 +1624,12 @@ void display_date() {
 void switch_mode() {
 
   //not sure why, but this is needed to stop ampm bool getting messed up
-  ampm = eeprom_read_bool(208);
+  //ampm = eeprom_read_bool(208);
   
   //remember mode we are in. We use this value if we go into settings mode, so we can change back from settings mode (6) to whatever mode we were in.
   old_mode = clock_mode;
 
-  const char* modes[] = {">Basic", ">Small", ">Slide", ">Words", ">Setup"};
+  const char modes[5][7] = {">Basic", ">Small", ">Slide", ">Words", ">Setup"};
 
   byte firstrun = 1;
 
@@ -1763,7 +1763,7 @@ void setup_menu() {
     }
     delay(50);
   }
-  
+
   //pick the mode 
   switch(setting_mode) {
     case 0:
@@ -1879,7 +1879,7 @@ void set_font() {
   cls();
 
   byte i = 0;
-  char text[9] = ">Set Fnt";
+  const char text[] = ">Set Fnt";
   while(text[i]) {
     puttinychar(i * 4, 1, text[i]);
     i++;
@@ -2060,7 +2060,7 @@ bool set_bool_value(byte message, bool current_value){
   delay(1500);
   cls();
 
-  char text[2][5] = {">OFF", ">ON "};
+  const char text[2][5] = {">OFF", ">ON "};
 
   //print current value
   i = 0;
@@ -2108,7 +2108,7 @@ void set_intensity() {
   cls();
   
   byte i = 0;
-  char text[8] = ">Bright";
+  const char text[] = ">Bright";
   while(text[i]) {
     puttinychar((i * 4) + 3, 0, text[i]);
     i++;
@@ -2245,7 +2245,7 @@ void set_time() {
 int set_value(byte message, int current_value, int reset_value, int rollover_limit) {
 
   cls();
-  char messages[5][9] = {">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
+  const char messages[5][9] = {">Set Min", ">Set Hr", ">Set Day", ">Set Mth", ">Set Yr"};
 
   //Print "set xyz" top line
   byte i = 0;
@@ -2468,7 +2468,7 @@ void set_display_options() {
 
   cls();
 
-  char options[5][9] = {">Normal", ">On", "> 9.00pm", ">10.00pm", ">11.00pm"};
+  const char options[5][9] = {">NORMAL", ">ON", "> 9.00PM", ">10.00PM", ">11.00PM"};
 
   byte i = 0;
   while(options[display_mode][i])
@@ -2482,7 +2482,7 @@ void set_display_options() {
 
     while (buttonB.isPressed()) {
       display_mode++;
-      if (display_mode == 5) {
+      if (display_mode > 4) {
         display_mode = 0;
       }
 
@@ -2501,7 +2501,7 @@ void set_display_options() {
       //display current lux value
       cls();
       byte i = 0;
-      char msg[4] = "LX:";
+      const char msg[] = "LX:";
       i = 0;
       while(msg[i]) {
         puttinychar(i * 4, 1, msg[i]);
