@@ -8,11 +8,11 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 03 Sep 2019
+Modified by Ratti3 - 09 Sep 2019
 Mini Clock v1.3 (ESP01 Version, LED Switch power via pin D8)
 Tested on IDE v1.8.9
 
-29,480 bytes 95%
+29,502 bytes 96%
 1,239 bytes 60%
 
 https://github.com/Ratti3/miniclock
@@ -2537,7 +2537,7 @@ void light() {
     shut = 1;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough
   }
-  if (lx > 0 && shut) {
+  if ((lx > 0 && shut) || (lx == 0 && shut && dont_turn_off == 1)) {
     shut = 0;
     set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough
   }

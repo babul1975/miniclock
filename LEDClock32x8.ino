@@ -8,11 +8,11 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 03 Sep 2019
+Modified by Ratti3 - 09 Sep 2019
 Mini Clock v1.1 (Non ESP01 Version)
 Tested on IDE v1.8.9
 
-26,040 bytes 84%
+26,062 bytes 84%
 991 bytes 48%
 
 https://github.com/Ratti3/miniclock
@@ -2380,7 +2380,7 @@ void light() {
     shut = 1;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough
   }
-  if (lx > 0 && shut) {
+  if ((lx > 0 && shut) || (lx == 0 && shut && dont_turn_off == 1)) {
     shut = 0;
     set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough
   }
