@@ -50,6 +50,10 @@ ESP01 (optional):
   D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+09 Sep 2019 - Changes:
+
+       # Display lights up when hour_on variable is met
+
 03 Sep 2019 - Changes:
 
        # Fixed issue of menus not working properly, specifically the >DISPLAY menu. The 3D arrays were out of bounds.
