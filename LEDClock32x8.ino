@@ -8,12 +8,12 @@ http://123led.wordpress.com/
 
 =======================================================================
 
-Modified by Ratti3 - 09 Sep 2019
+Modified by Ratti3 - 17 May 2020
 Mini Clock v1.1 (Non ESP01 Version)
-Tested on IDE v1.8.9
+Tested on IDE v1.8.12
 
-26,062 bytes 84%
-991 bytes 48%
+26,046 bytes 84%
+1019 bytes 49%
 
 https://github.com/Ratti3/miniclock
 https://youtu.be/MRocFW43dEg
@@ -27,10 +27,10 @@ https://create.arduino.cc/projecthub/Ratti3/led-matrix-ntp-clock-with-ds3231-bme
 #include <LedControl.h>                  // v1.0.6 https://github.com/wayoda/LedControl
 #include <FontLEDClock.h>                // https://github.com/javastraat/arduino/blob/master/libraries/FontLEDClock/FontLEDClock.h - however, it has been modified
 #include <Wire.h>                        // Standard Arduino library
-#include <RTClib.h>                      // v1.2.4 DS3231 RTC - https://github.com/adafruit/RTClib
+#include <RTClib.h>                      // v1.7.0 DS3231 RTC - https://github.com/adafruit/RTClib
 #include <Button.h>                      // https://github.com/tigoe/Button
-#include <Adafruit_Sensor.h>             // v1.0.3 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
-#include <Adafruit_BME280.h>             // v1.0.9 BME280 Environmental Sensor - https://github.com/adafruit/Adafruit_BME280_Library
+#include <Adafruit_Sensor.h>             // v1.1.2 Required by BME280 - https://github.com/adafruit/Adafruit_Sensor
+#include <Adafruit_BME280.h>             // v2.0.2 BME280 Environmental Sensor - https://github.com/adafruit/Adafruit_BME280_Library
 #include <BH1750FVI.h>                   // v1.1.1 BH1750 Light Sensor - https://github.com/PeterEmbedded/BH1750FVI
 #include <EEPROM.h>                      // Used to save settings to Arduino EEPROM
 
@@ -73,6 +73,7 @@ byte auto_intensity_value = 0;           // Stores the last intensity value set 
 char words[1];                           // Holds word clock words, retrieved from progmem
 bool DST = 0;                            // [212] Holds DST applied value, 1 = summertime +1hr applied, this is to ensure DST +1/-1 runs only once
 bool dst_ntp_run = 0;                    // Holds the value to see if ntp() and dst() have run once a day
+bool dont_turn_off = 0;                  // Holds value for turning display on or off
 byte FirstRunValue = 128;                // The check digits to see if EEPROM has values saved, change this [1-254] if you want to reset EEPROM to default values
 byte FirstRunAddress = 255;              // [255] Address on EEPROM FirstRunValue is saved
 
@@ -2380,7 +2381,7 @@ void light() {
     shut = 1;
     set_devices(false, 0); //Call sleep routine to turn off matrix, applies when light is low enough
   }
-  if ((lx > 0 && shut) || (lx == 0 && shut && dont_turn_off == 1)) {
+  if ((lx > 0 && shut) || (lx == 0 && shut && dont_turn_off)) {
     shut = 0;
     set_devices(false, 0); //Call sleep routine to turn on matrix, applies when light is high enough
   }
