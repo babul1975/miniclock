@@ -1,16 +1,8 @@
-/* Timestamp functions using a DS1307 RTC connected via I2C and Wire lib
-**
-** Useful for file name
-**		` SD.open(time.timestamp()+".log", FILE_WRITE) `
-**
-**
-** Created: 2015-06-01 by AxelTB
-** Last Edit:
-*/
-
-#include "RTClib.h"
+#include <Wire.h>
+#include <RTClib.h>
 
 RTC_DS1307 rtc;
+
 
 void setup () {
   Serial.begin(57600);
@@ -43,19 +35,31 @@ void setup () {
 }
 
 void loop() {
- DateTime time = rtc.now();
 
- //Full Timestamp
- Serial.println(String("DateTime::TIMESTAMP_FULL:\t")+time.timestamp(DateTime::TIMESTAMP_FULL));
+   DateTime now = rtc.now();
 
- //Date Only
- Serial.println(String("DateTime::TIMESTAMP_DATE:\t")+time.timestamp(DateTime::TIMESTAMP_DATE));
+  //buffer can be defined using following combinations:
+  //hh - the hour with a leading zero (00 to 23)
+  //mm - the minute with a leading zero (00 to 59)
+  //ss - the whole second with a leading zero where applicable (00 to 59)
+  //YYYY - the year as four digit number
+  //YY - the year as two digit number (00-99)
+  //MM - the month as number with a leading zero (01-12)
+  //MMM - the abbreviated English month name ('Jan' to 'Dec')
+  //DD - the day as number with a leading zero (01 to 31)
+  //DDD - the abbreviated English day name ('Mon' to 'Sun')
 
- //Full Timestamp
- Serial.println(String("DateTime::TIMESTAMP_TIME:\t")+time.timestamp(DateTime::TIMESTAMP_TIME));
+   char buf1[] = "hh:mm";
+   Serial.println(now.toString(buf1));
 
- Serial.println("\n");
+   char buf2[] = "YYMMDD-hh:mm:ss";
+   Serial.println(now.toString(buf2));
 
- //Delay 5s
- delay(5000);
+   char buf3[] = "Today is DDD, MMM DD YYYY";
+   Serial.println(now.toString(buf3));
+
+   char buf4[] = "MM-DD-YYYY";
+   Serial.println(now.toString(buf4));
+
+   delay(1000);
 }
