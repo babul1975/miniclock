@@ -50,6 +50,10 @@ ESP01 (optional):
   D6 - ESP01 RX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+17 May 2020 - Changes:
+
+       # Fixed issue when it was not activating the display when hour_on was met
+
 09 Sep 2019 - Changes:
 
        # Display lights up when hour_on variable is met
